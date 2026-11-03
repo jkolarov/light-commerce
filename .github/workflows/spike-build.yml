@@ -1,0 +1,40 @@
+# Spike (FLU-10): time a production build on a standard GitHub-hosted runner.
+name: spike-build
+on:
+  push:
+    branches: [spike/payload-v4]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Build-only placeholders, not secrets.
+      PAYLOAD_SECRET: ci-build-only-placeholder
+      DATABASE_URL: file:./data/ci.db
+      NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+      STRIPE_SECRET_KEY: ci-placeholder
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ci-placeholder
+      STRIPE_WEBHOOKS_SIGNING_SECRET: ci-placeholder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.2
+      - run: npm install -g pnpm@12.16.1
+      - name: Runner
+        run: |
+          nproc; free -m; node -v; pnpm -v
+          echo "runner: $(nproc) vCPU, $(free -m | awk '/Mem:/ {print $2}') MB" >> "$GITHUB_STEP_SUMMARY"
+      - name: Install
+        run: |
+          start=$(date +%s)
+          pnpm install --frozen-lockfile
+          echo "install_seconds=$(( $(date +%s) - start ))" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Migrate the build database
+        run: mkdir -p data && pnpm payload migrate
+      - name: Production build (timed)
+        run: |
+          start=$(date +%s)
+          pnpm build
+          echo "build_seconds=$(( $(date +%s) - start ))" | tee -a "$GITHUB_STEP_SUMMARY"
