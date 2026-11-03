@@ -191,7 +191,7 @@ The spike is the first ticket. If a criterion fails, the builder may settle thes
 
 Anything bigger goes back to the owner: Payload or the ecommerce plugin unusable, or SQLite unworkable.
 
-Until the ADR is Accepted, only work that doesn't depend on Payload may start: the fictional company's content (texts, product data, images), the theme's visual direction and design tokens, and the `light.config.ts` zod schema.
+Until the ADR is Accepted, only work that doesn't depend on Payload may start: the fictional company's content (texts, product data, images) and its visual direction. The plan's "blocked by" relations are the authority on what starts when.
 
 ## 9. Left to the builder
 
