@@ -62,6 +62,10 @@ export default buildConfig({
     },
     // Spike: run pending migrations when Payload initialises in production (Docker).
     prodMigrations: migrations,
+    // Spike experiments: the SQLite adapter uses no DB transactions unless transactionOptions is set.
+    ...(process.env.SPIKE_SQLITE_TX === '1' ? { transactionOptions: {} } : {}),
+    ...(process.env.SPIKE_SQLITE_BUSY ? { busyTimeout: Number(process.env.SPIKE_SQLITE_BUSY) } : {}),
+    ...(process.env.SPIKE_SQLITE_WAL === '1' ? { wal: true } : {}),
   }),
   editor: lexicalEditor({
     features: () => {
