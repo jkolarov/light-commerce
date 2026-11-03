@@ -41,6 +41,7 @@ export const Media: CollectionConfig = {
     },
   ],
   upload: {
-    staticDir: path.resolve(dirname, '../../public/media'),
+    // Spike: absolute dir from env in Docker (standalone bundles move import.meta.url).
+    staticDir: process.env.MEDIA_DIR || path.resolve(dirname, '../../public/media'),
   },
 }

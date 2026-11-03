@@ -38,7 +38,7 @@ const visit = async (path) => {
 }
 
 out.pages = {}
-for (const path of [
+for (const path of process.env.SPIKE_SKIP_VISITS ? [] : [
   '/admin/collections/pages',
   '/admin/collections/products',
   '/admin/collections/products/1',
@@ -59,6 +59,29 @@ for (const path of [
   if (shots && /transactions\/1|orders\/1|products\/1/.test(path)) {
     await page.screenshot({ path: `${shots}/admin${path.replaceAll('/', '_')}.png`, fullPage: true })
   }
+}
+
+// Optional write actions: upload a photo (sharp variants) and change stock in the product form.
+if (process.env.SPIKE_UPLOAD_FILE) {
+  const t = Date.now()
+  await page.goto(`${base}/admin/collections/media/create`)
+  await page.locator('input[type="file"]').first().setInputFiles(process.env.SPIKE_UPLOAD_FILE)
+  await page.locator('#field-alt').fill('Spike photo')
+  await page.getByRole('button', { name: /^save$/i }).click()
+  await page.waitForURL(/\/admin\/collections\/media\/\d+/, { timeout: 120_000 })
+  out.upload = { url: page.url(), seconds: (Date.now() - t) / 1000 }
+  if (shots) await page.screenshot({ path: `${shots}/admin-media-uploaded.png`, fullPage: true })
+
+  const t2 = Date.now()
+  await page.goto(`${base}/admin/collections/products/1`)
+  await page.getByRole('button', { name: 'Product Details' }).or(page.getByText('Product Details', { exact: true })).first().click()
+  const inv = page.locator('#field-inventory')
+  await inv.fill(String(30 + Math.floor(Math.random() * 60)))
+  await page.getByRole('button', { name: /publish changes/i }).first().click()
+  await page.waitForResponse((r) => r.url().includes('/api/products/1') || r.request().method() === 'POST')
+  await page.waitForLoadState('networkidle')
+  if (shots) await page.screenshot({ path: `${shots}/admin-product-stock-saved.png`, fullPage: true })
+  out.stockEdit = { seconds: (Date.now() - t2) / 1000 }
 }
 
 // REST still works for hidden collections? (guest carts must keep working)

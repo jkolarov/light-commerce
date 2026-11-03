@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@payloadcms/admin-bar": "4.0.0-beta.6",
+    "@payloadcms/db-sqlite": "4.0.0-beta.6",
     "@payloadcms/email-nodemailer": "4.0.0-beta.6",
     "@payloadcms/live-preview-react": "4.0.0-beta.6",
     "@payloadcms/next": "4.0.0-beta.6",
@@ -30,6 +31,7 @@
     "@payloadcms/plugin-form-builder": "4.0.0-beta.6",
     "@payloadcms/plugin-seo": "4.0.0-beta.6",
     "@payloadcms/richtext-lexical": "4.0.0-beta.6",
+    "@payloadcms/transformer-sharp": "4.0.0-beta.6",
     "@payloadcms/translations": "4.0.0-beta.6",
     "@payloadcms/ui": "4.0.0-beta.6",
     "@radix-ui/react-accordion": "1.2.11",
@@ -62,8 +64,7 @@
     "sharp": "0.35.5",
     "sonner": "^1.7.2",
     "stripe": "18.5.0",
-    "tailwind-merge": "^3.4.0",
-    "@payloadcms/db-sqlite": "4.0.0-beta.6"
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

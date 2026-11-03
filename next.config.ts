@@ -12,6 +12,8 @@ const NEXT_PUBLIC_SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://loc
 const nextConfig: NextConfig = {
   // Next 16.4 `next dev` appends a block to AGENTS.md unless this is off.
   agentRules: false,
+  // Spike: Docker image uses the standalone server.
+  output: 'standalone',
   images: {
     localPatterns: [
       {

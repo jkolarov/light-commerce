@@ -12,6 +12,7 @@ import {
 } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { buildConfig } from 'payload'
+import { sharpTransformer } from '@payloadcms/transformer-sharp'
 import { fileURLToPath } from 'url'
 
 import { Categories } from '@/collections/Categories'
@@ -21,6 +22,7 @@ import { Users } from '@/collections/Users'
 import { Footer } from '@/globals/Footer'
 import { Header } from '@/globals/Header'
 import { plugins } from './plugins'
+import { migrations } from './migrations'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -58,6 +60,8 @@ export default buildConfig({
     client: {
       url: process.env.DATABASE_URL || '',
     },
+    // Spike: run pending migrations when Payload initialises in production (Docker).
+    prodMigrations: migrations,
   }),
   editor: lexicalEditor({
     features: () => {
@@ -101,6 +105,22 @@ export default buildConfig({
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
+  },
+  // Spike: image variants, to measure memory during an admin upload.
+  upload: {
+    transformers: [
+      sharpTransformer({
+        collections: {
+          media: {
+            variants: [
+              { name: 'thumbnail', width: 400 },
+              { name: 'card', width: 800 },
+              { name: 'large', width: 1600 },
+            ],
+          },
+        },
+      }),
+    ],
   },
   // Sharp is now an optional dependency -
   // if you want to resize images, crop, set focal point, etc.
