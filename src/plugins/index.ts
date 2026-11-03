@@ -33,6 +33,12 @@ const readOnly: CollectionOverride = ({ defaultCollection }) =>
         admin: { ...defaultCollection.admin, group: false },
       }
 
+// Spike: amount breakdown stored on transactions (at initiate) and orders (at finalize).
+const breakdownFields = [
+  { name: 'subtotal', type: 'number' as const, admin: { readOnly: true } },
+  { name: 'shippingAmount', type: 'number' as const, admin: { readOnly: true } },
+]
+
 const generateTitle: GenerateTitle<Product | Page> = ({ doc }) => {
   return doc?.title ? `${doc.title} | Payload Ecommerce Template` : 'Payload Ecommerce Template'
 }
@@ -107,12 +113,18 @@ export const plugins: Plugin[] = [
     customers: {
       slug: 'users',
     },
-    transactions: { transactionsCollectionOverride: readOnly },
+    transactions: {
+      transactionsCollectionOverride: async (args) => {
+        const c = await readOnly(args)
+        return { ...c, fields: [...c.fields, ...breakdownFields] }
+      },
+    },
     orders: {
       ordersCollectionOverride: ({ defaultCollection }) => ({
         ...defaultCollection,
         fields: [
           ...defaultCollection.fields,
+          ...breakdownFields,
           {
             name: 'accessToken',
             type: 'text',

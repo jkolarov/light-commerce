@@ -72,21 +72,50 @@ export const settleFromWebhook = async ({ event, req }: WebhookArgs): Promise<vo
   payload.logger.info(`[spike webhook] ${event.id}: order ${String(body.orderID)} for transaction ${String(body.transactionID)}`)
 }
 
-/** Adds a flat shipping amount (minor units) to what the adapter charges. */
-export const withFlatShipping = (adapter: PaymentAdapter, shippingCents: number): PaymentAdapter => {
-  if (!shippingCents) return adapter
-  return {
-    ...adapter,
-    initiatePayment: (args) =>
-      adapter.initiatePayment({
-        ...args,
-        data: {
-          ...args.data,
-          cart: { ...args.data.cart, subtotal: (args.data.cart.subtotal ?? 0) + shippingCents },
-        },
-      }),
-  }
-}
+/**
+ * Adds a flat shipping amount (minor units) to what the adapter charges, stores the breakdown
+ * (subtotal, shippingAmount) on the transaction at initiate, and passes it into the plugin's
+ * finalizeOrder so the order gets it too, on both the browser and the webhook path.
+ */
+export const withFlatShipping = (adapter: PaymentAdapter, shippingCents: number): PaymentAdapter => ({
+  ...adapter,
+  initiatePayment: async (args) => {
+    const subtotal = args.data.cart.subtotal ?? 0
+    const result = await adapter.initiatePayment({
+      ...args,
+      data: { ...args.data, cart: { ...args.data.cart, subtotal: subtotal + shippingCents } },
+    })
+    await args.req.payload.update({
+      collection: 'transactions',
+      overrideAccess: true,
+      req: args.req,
+      where: { 'stripe.paymentIntentID': { equals: result.paymentIntentID } },
+      data: { subtotal, shippingAmount: shippingCents } as never,
+    })
+    return result
+  },
+  confirmOrder: (args) =>
+    adapter.confirmOrder({
+      ...args,
+      finalizeOrder: async (finalizeArgs) => {
+        const transaction = (await args.req.payload.findByID({
+          collection: 'transactions',
+          id: finalizeArgs.transactionID,
+          depth: 0,
+          overrideAccess: true,
+          req: args.req,
+        })) as { subtotal?: number | null; shippingAmount?: number | null }
+        return args.finalizeOrder({
+          ...finalizeArgs,
+          orderData: {
+            ...finalizeArgs.orderData,
+            subtotal: transaction.subtotal,
+            shippingAmount: transaction.shippingAmount,
+          },
+        })
+      },
+    }),
+})
 
 export const spikeStripeAdapter = (): PaymentAdapter => {
   const webhookOrders = process.env.SPIKE_WEBHOOK_ORDERS === '1'

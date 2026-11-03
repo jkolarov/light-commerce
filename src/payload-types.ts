@@ -351,6 +351,8 @@ export interface Order {
   status?: OrderStatus;
   amount?: number | null;
   currency?: 'EUR' | null;
+  subtotal?: number | null;
+  shippingAmount?: number | null;
   accessToken?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -961,6 +963,8 @@ export interface Transaction {
   cart?: (number | null) | Cart;
   amount?: number | null;
   currency?: 'EUR' | null;
+  subtotal?: number | null;
+  shippingAmount?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1817,6 +1821,8 @@ export interface OrdersSelect<T extends boolean = true> {
   status?: T;
   amount?: T;
   currency?: T;
+  subtotal?: T;
+  shippingAmount?: T;
   accessToken?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1863,6 +1869,8 @@ export interface TransactionsSelect<T extends boolean = true> {
   cart?: T;
   amount?: T;
   currency?: T;
+  subtotal?: T;
+  shippingAmount?: T;
   updatedAt?: T;
   createdAt?: T;
 }
