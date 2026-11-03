@@ -1,0 +1,91 @@
+{
+  "slug": {
+    "fr": "la-ferme",
+    "en": "the-farm"
+  },
+  "title": {
+    "fr": "La ferme",
+    "en": "The farm"
+  },
+  "seo": {
+    "title": {
+      "fr": "La ferme – Les Claies",
+      "en": "The farm – Les Claies"
+    },
+    "description": {
+      "fr": "Deux hectares et demi de terrasses en pierre sèche à Combe-Rousse, dans les Baronnies provençales, et un séchoir à claies dans l’ancienne bergerie.",
+      "en": "Two and a half hectares of dry-stone terraces at Combe-Rousse in the Baronnies provençales, and a rack drying room in the old sheep barn."
+    },
+    "image": "vallee.jpg"
+  },
+  "layout": [
+    {
+      "blockType": "hero",
+      "heading": {
+        "fr": "Deux hectares et demi, en terrasses",
+        "en": "Two and a half hectares of terraces"
+      },
+      "text": {
+        "fr": "Hélène cultive, Samir fait sécher, et tous les deux ensachent. Nous sommes installés à Combe-Rousse, dans les Baronnies provençales, depuis 2015.",
+        "en": "Hélène grows, Samir dries, and both of them pack. We have been at Combe-Rousse, in the Baronnies provençales, since 2015."
+      },
+      "image": "vallee.jpg"
+    },
+    {
+      "blockType": "imageText",
+      "heading": {
+        "fr": "Des restanques reprises à la friche",
+        "en": "Terraces taken back from the scrub"
+      },
+      "content": {
+        "fr": "Les terrasses de Combe-Rousse ont été montées en pierre sèche au XIXe siècle, pour la vigne et les oliviers. Le grand-père d’Hélène y cultivait encore du lavandin dans les années 1980, puis le chêne et le genêt ont tout recouvert.\n\nEn 2015, Hélène a débroussaillé les trois premières terrasses, remonté les murs qui s’étaient effondrés et planté ses premiers pieds de verveine. La première récolte tenait dans quatre cagettes.",
+        "en": "The Combe-Rousse terraces were built in dry stone in the 19th century, for vines and olive trees. Hélène’s grandfather still grew lavandin there in the 1980s; then oak and broom covered everything.\n\nIn 2015 Hélène cleared the first three terraces, rebuilt the walls that had fallen down and planted her first lemon verbena. The first harvest fitted in four crates."
+      },
+      "image": "mur-pierre-seche.jpg",
+      "imagePosition": "left",
+      "caption": {
+        "fr": "Un mur de restanque remonté en 2016",
+        "en": "A terrace wall rebuilt in 2016"
+      }
+    },
+    {
+      "blockType": "richText",
+      "content": {
+        "fr": "## Le séchoir\n\nSamir est arrivé en 2018, menuisier de métier, avec l’idée de faire sécher les plantes sans machine. Il a installé dans l’ancienne bergerie une quarantaine de claies : des cadres en châtaignier tendus de grillage fin, empilés à quelques centimètres les uns des autres.\n\nL’air circule entre les claies, la lumière n’y entre pas. Les plantes y gardent leur couleur et leur parfum. C’est lent, et c’est voulu.\n\n> Le tilleul, on ne le cueille pas quand on veut. On attend que les bractées pâlissent, et après on a dix jours.\n>\n> — Hélène",
+        "en": "## The drying room\n\nSamir arrived in 2018, a joiner by trade, with the idea of drying plants without machines. In the old sheep barn he set up about forty claies: chestnut frames stretched with fine mesh, stacked a few centimetres apart.\n\nAir moves between the racks and light stays out, so the plants keep their colour and their scent. It is slow, and that is the point.\n\n> You can’t pick linden when you like. You wait for the bracts to turn pale, and then you have ten days.\n>\n> — Hélène"
+      }
+    },
+    {
+      "blockType": "imageText",
+      "heading": {
+        "fr": "Ce que nous cultivons",
+        "en": "What we grow"
+      },
+      "content": {
+        "fr": "Sur nos terrasses : verveine odorante, menthe poivrée, mélisse, mauve sylvestre, et quelques rangs d’essai (calendula, thym citron). Le tilleul vient des vieux arbres du hameau, que leurs propriétaires nous laissent cueillir chaque été.\n\nNous ne traitons pas les cultures et nous désherbons à la main. Nous n’avons pas de label : la ferme est trop petite pour que la certification ait du sens pour nous, mais vous pouvez venir voir.",
+        "en": "On our terraces: lemon verbena, peppermint, lemon balm, common mallow, and a few trial rows (calendula, lemon thyme). The linden comes from the old trees of the hamlet, whose owners let us pick them every summer.\n\nWe don’t spray anything and we weed by hand. We have no organic label: the farm is too small for certification to make sense for us, but you can always come and see for yourself."
+      },
+      "image": "pots-aromatiques.jpg",
+      "imagePosition": "right"
+    },
+    {
+      "blockType": "callToAction",
+      "heading": {
+        "fr": "Venir à la ferme",
+        "en": "Visiting the farm"
+      },
+      "text": {
+        "fr": "Nous ouvrons le séchoir le samedi matin, de mai à septembre. Prévenez-nous la veille.",
+        "en": "We open the drying room on Saturday mornings from May to September. Let us know the day before."
+      },
+      "link": {
+        "type": "page",
+        "slug": "contact",
+        "label": {
+          "fr": "Nous prévenir",
+          "en": "Get in touch"
+        }
+      }
+    }
+  ]
+}

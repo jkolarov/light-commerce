@@ -1,0 +1,42 @@
+{
+  "slug": {
+    "fr": "mentions-legales",
+    "en": "legal"
+  },
+  "title": {
+    "fr": "Mentions légales et conditions de vente",
+    "en": "Legal notice and terms of sale"
+  },
+  "seo": {
+    "title": {
+      "fr": "Mentions légales et conditions de vente – Les Claies",
+      "en": "Legal notice and terms of sale – Les Claies"
+    },
+    "description": {
+      "fr": "Les Claies est une ferme fictive : ce site est une démonstration de light-commerce et rien n’y est vendu. Mentions légales et conditions de vente fictives.",
+      "en": "Les Claies is a fictional farm: this site is a light-commerce demo and nothing is sold. Fictional legal notice and terms of sale."
+    },
+    "image": "collines.jpg"
+  },
+  "layout": [
+    {
+      "blockType": "hero",
+      "heading": {
+        "fr": "Mentions légales et conditions de vente",
+        "en": "Legal notice and terms of sale"
+      },
+      "text": {
+        "fr": "Les Claies n’existe pas. Ce site est une démonstration du logiciel light-commerce : rien n’y est vendu, rien n’est expédié, aucun paiement réel n’est encaissé.",
+        "en": "Les Claies does not exist. This site is a demo of the light-commerce software: nothing is sold, nothing is shipped and no real payment is taken."
+      },
+      "image": "collines.jpg"
+    },
+    {
+      "blockType": "richText",
+      "content": {
+        "fr": "## Un site de démonstration\n\nLes Claies, Hélène, Samir, la ferme de Combe-Rousse, ses produits, ses adresses et ses numéros sont inventés. Les photos viennent de banques d’images libres de droits ; leurs auteurs sont cités dans le dépôt du projet.\n\nVous pouvez tout essayer, jusqu’au paiement :\n\n- le paiement fonctionne en **mode test** : aucune carte n’est débitée. Utilisez la carte de test 4242 4242 4242 4242, une date d’expiration future et n’importe quel code à trois chiffres ;\n- n’entrez pas de vraies données : un nom et une adresse inventés suffisent ;\n- aucun e-mail ne part réellement : les messages de commande restent dans une boîte de test interne ;\n- les commandes de démonstration sont effacées et les stocks remis à niveau chaque nuit.\n\n## Éditeur et hébergement\n\nCe site est publié par le projet light-commerce, un logiciel libre pour les sites de petits commerces, et hébergé sur un serveur privé du projet. Il n’est pas référencé par les moteurs de recherche.\n\n## Conditions de vente (fictives)\n\nLes conditions ci-dessous montrent à quoi ressemblerait la page d’une vraie boutique. Elles n’engagent personne.\n\n### Prix\n\nLes prix sont indiqués en euros, toutes taxes comprises (TVA à 5,5 %). Les frais de livraison s’ajoutent à la commande ; ils sont détaillés sur la page [livraison et retours](page:livraison).\n\n### Commande et paiement\n\nLa commande est ferme une fois le paiement accepté. Vous recevez alors un e-mail de confirmation qui récapitule les produits, le montant et l’adresse de livraison. Le paiement se fait par carte bancaire ; les données de carte sont saisies chez notre prestataire de paiement et ne passent jamais par nos serveurs.\n\n### Livraison\n\nEn France métropolitaine, sous deux à quatre jours ouvrés après l’envoi. Les détails sont sur la page [livraison et retours](page:livraison).\n\n### Droit de rétractation\n\nVous disposez de quatorze jours à compter de la réception pour vous rétracter, sans avoir à vous justifier. Les produits doivent nous revenir non ouverts, dans leur emballage d’origine. Nous vous remboursons dans les quatorze jours qui suivent la réception du retour, par le même moyen de paiement.\n\n### Données personnelles\n\nNous utilisons vos nom, adresse et e-mail uniquement pour traiter votre commande. Nous ne les revendons pas et ne nous en servons pas pour de la publicité. Vous pouvez demander à les consulter ou à les effacer en [nous écrivant](page:contact).\n\n### Coordonnées\n\nLes Claies, quartier de Combe-Rousse, 26510 Montaurel (adresse fictive). SIRET : fictif. Numéro de TVA intracommunautaire : fictif.",
+        "en": "## A demo site\n\nLes Claies, Hélène, Samir, the Combe-Rousse farm, its products, addresses and phone numbers are all invented. The photos come from free image libraries; their authors are credited in the project’s repository.\n\nYou can try everything, right through to payment:\n\n- payment runs in **test mode**, so no card is charged. Use the test card 4242 4242 4242 4242 with any future expiry date and any three-digit code;\n- don’t enter real details: a made-up name and address are enough;\n- no email really goes out: order messages stay in an internal test mailbox;\n- demo orders are deleted and stock is reset every night.\n\n## Publisher and hosting\n\nThis site is published by the light-commerce project, free software for small business websites, and hosted on one of the project’s private servers. It is hidden from search engines.\n\n## Terms of sale (fictional)\n\nThe terms below show what a real shop’s page would look like. They bind no one.\n\n### Prices\n\nPrices are in euros and include VAT at 5.5%. Shipping is added to the order; see [shipping and returns](page:livraison).\n\n### Orders and payment\n\nAn order is final once payment is accepted. You then receive a confirmation email listing the products, the amount and the delivery address. Payment is by card; card details are entered with our payment provider and never pass through our servers.\n\n### Delivery\n\nTo mainland France, within two to four working days of dispatch. Details are on the [shipping and returns](page:livraison) page.\n\n### Right of withdrawal\n\nYou have fourteen days from delivery to withdraw from the purchase, without giving a reason. Products must come back unopened, in their original packaging. We refund you within fourteen days of receiving the return, by the same payment method.\n\n### Personal data\n\nWe use your name, address and email only to process your order. We don’t sell them and don’t use them for advertising. You can ask to see or delete them by [writing to us](page:contact).\n\n### Contact details\n\nLes Claies, quartier de Combe-Rousse, 26510 Montaurel, France (fictional address). Company number: fictional. VAT number: fictional."
+      }
+    }
+  ]
+}

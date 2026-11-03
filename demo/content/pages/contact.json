@@ -1,0 +1,68 @@
+{
+  "slug": {
+    "fr": "contact",
+    "en": "contact"
+  },
+  "title": {
+    "fr": "Contact",
+    "en": "Contact"
+  },
+  "seo": {
+    "title": {
+      "fr": "Contact – Les Claies",
+      "en": "Contact – Les Claies"
+    },
+    "description": {
+      "fr": "Écrivez-nous ou appelez-nous pour une question sur une plante ou une commande. Visite du séchoir le samedi matin, de mai à septembre.",
+      "en": "Email or call us about a plant or an order. The drying room is open to visitors on Saturday mornings, May to September."
+    },
+    "image": "porte.jpg"
+  },
+  "layout": [
+    {
+      "blockType": "hero",
+      "heading": {
+        "fr": "Écrivez-nous, nous répondons nous-mêmes",
+        "en": "Write to us, we answer ourselves"
+      },
+      "text": {
+        "fr": "En général dans la journée, sauf pendant les grosses semaines de récolte, en juillet.",
+        "en": "Usually the same day, except in the busy harvest weeks of July."
+      },
+      "image": "porte.jpg"
+    },
+    {
+      "blockType": "richText",
+      "content": {
+        "fr": "## Par e-mail\n\nbonjour@lesclaies.example\n\nPour une commande, indiquez son numéro : nous la retrouverons plus vite.\n\n## Par téléphone\n\n04 65 71 23 48, du lundi au vendredi, de 14 h à 17 h. Le matin, nous sommes dans les terrasses.\n\n## À la ferme\n\nLes Claies, quartier de Combe-Rousse, 26510 Montaurel (Drôme)\n\nLe séchoir est ouvert le samedi de 9 h à 12 h, de mai à septembre. Prévenez-nous la veille : la route est étroite et le chemin se termine à pied.",
+        "en": "## By email\n\nbonjour@lesclaies.example\n\nIf it is about an order, include its number so we can find it faster.\n\n## By phone\n\n+33 4 65 71 23 48, Monday to Friday, 2 pm to 5 pm. In the mornings we are out on the terraces.\n\n## At the farm\n\nLes Claies, quartier de Combe-Rousse, 26510 Montaurel (Drôme), France\n\nThe drying room is open on Saturdays from 9 am to noon, May to September. Tell us the day before: the road is narrow and the last stretch is on foot."
+      }
+    },
+    {
+      "blockType": "callToAction",
+      "heading": {
+        "fr": "Une question sur une commande ?",
+        "en": "A question about an order?"
+      },
+      "text": {
+        "fr": "Les délais, les frais et les retours sont détaillés sur la page livraison.",
+        "en": "Delivery times, costs and returns are all on the shipping page."
+      },
+      "link": {
+        "type": "page",
+        "slug": "livraison",
+        "label": {
+          "fr": "Livraison et retours",
+          "en": "Shipping and returns"
+        }
+      }
+    },
+    {
+      "blockType": "richText",
+      "content": {
+        "fr": "*Les Claies est une ferme inventée pour la démonstration de light-commerce. Cette adresse, ce numéro de téléphone et cette adresse e-mail sont fictifs.*",
+        "en": "*Les Claies is a farm invented to demonstrate light-commerce. This address, phone number and email address are fictional.*"
+      }
+    }
+  ]
+}

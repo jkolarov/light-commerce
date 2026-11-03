@@ -1,0 +1,356 @@
+[
+  {
+    "slug": "verveine-odorante",
+    "name": {
+      "fr": "Verveine odorante",
+      "en": "Lemon verbena"
+    },
+    "summary": {
+      "fr": "Citronnée et vive, feuilles entières",
+      "en": "Bright and lemony, whole leaves"
+    },
+    "description": {
+      "fr": "La verveine odorante est la plante qui a lancé la ferme : les premiers pieds ont été plantés en 2015 sur la terrasse du haut, la plus ensoleillée. Nous la coupons de juin à octobre, toujours le matin, et ses feuilles sèchent entières sur les claies.\n\nEn tasse, elle est franchement citronnée, avec une fin légèrement herbacée. Elle se boit chaude après le repas, ou froide l’été : laissez-la infuser une nuit au réfrigérateur.",
+      "en": "Lemon verbena is the plant the farm started with: the first bushes went into the top terrace, the sunniest one, in 2015. We cut it from June to October, always in the morning, and the leaves dry whole on the racks.\n\nIn the cup it is clearly lemony, with a slightly green finish. Drink it hot after a meal, or cold in summer: leave it to steep overnight in the fridge."
+    },
+    "facts": [
+      {
+        "label": {
+          "fr": "Plante",
+          "en": "Plant"
+        },
+        "value": {
+          "fr": "Aloysia citrodora, feuilles",
+          "en": "Aloysia citrodora, leaves"
+        }
+      },
+      {
+        "label": {
+          "fr": "Récolte",
+          "en": "Harvest"
+        },
+        "value": {
+          "fr": "de juin à octobre 2026",
+          "en": "June to October 2026"
+        }
+      },
+      {
+        "label": {
+          "fr": "Séchage",
+          "en": "Drying"
+        },
+        "value": {
+          "fr": "à l’ombre, sur claies, 5 jours",
+          "en": "in the shade, on racks, 5 days"
+        }
+      },
+      {
+        "label": {
+          "fr": "Poids net",
+          "en": "Net weight"
+        },
+        "value": {
+          "fr": "30 g, environ 25 tasses",
+          "en": "30 g, about 25 cups"
+        }
+      }
+    ],
+    "price": 790,
+    "stock": 48,
+    "images": [
+      "verveine.jpg"
+    ]
+  },
+  {
+    "slug": "tilleul",
+    "name": {
+      "fr": "Tilleul",
+      "en": "Linden blossom"
+    },
+    "summary": {
+      "fr": "Doux et miellé, fleurs et bractées",
+      "en": "Soft and honeyed, flowers and bracts"
+    },
+    "description": {
+      "fr": "Le tilleul ne se cultive pas chez nous : il se cueille. Chaque année, vers la mi-juin, nous passons dix jours dans les vieux tilleuls du hameau, avec l’accord de leurs propriétaires. Il faut cueillir quand les fleurs viennent de s’ouvrir et que les bractées, ces petites feuilles pâles qui les portent, n’ont pas encore durci.\n\nC’est la tisane la plus douce de la gamme : ronde, un peu miellée, à boire le soir.",
+      "en": "We don’t grow our linden, we pick it. Every year around mid-June we spend ten days up the old linden trees of the hamlet, with their owners’ blessing. The flowers must be picked just after they open, before the bracts (the pale little leaves that carry them) turn tough.\n\nIt is the softest tea we make: round and slightly honeyed, for the evening."
+    },
+    "facts": [
+      {
+        "label": {
+          "fr": "Plante",
+          "en": "Plant"
+        },
+        "value": {
+          "fr": "Tilia cordata, fleurs et bractées",
+          "en": "Tilia cordata, flowers and bracts"
+        }
+      },
+      {
+        "label": {
+          "fr": "Récolte",
+          "en": "Harvest"
+        },
+        "value": {
+          "fr": "juin 2026",
+          "en": "June 2026"
+        }
+      },
+      {
+        "label": {
+          "fr": "Séchage",
+          "en": "Drying"
+        },
+        "value": {
+          "fr": "à l’ombre, sur claies, 4 jours",
+          "en": "in the shade, on racks, 4 days"
+        }
+      },
+      {
+        "label": {
+          "fr": "Poids net",
+          "en": "Net weight"
+        },
+        "value": {
+          "fr": "40 g, environ 25 tasses",
+          "en": "40 g, about 25 cups"
+        }
+      }
+    ],
+    "price": 850,
+    "stock": 30,
+    "images": [
+      "tilleul.jpg",
+      "tilleul-arbre.jpg"
+    ]
+  },
+  {
+    "slug": "menthe-poivree",
+    "name": {
+      "fr": "Menthe poivrée",
+      "en": "Peppermint"
+    },
+    "summary": {
+      "fr": "Fraîche et franche, feuilles entières",
+      "en": "Cool and clean, whole leaves"
+    },
+    "description": {
+      "fr": "Notre menthe pousse au pied des terrasses, là où l’eau du vallon reste le plus longtemps. Nous la coupons deux fois par été, juste avant la floraison, quand les feuilles sont les plus parfumées.\n\nElle donne une tisane fraîche et nette, qui supporte bien une deuxième infusion. Chaude ou glacée, avec ou sans sucre.",
+      "en": "Our mint grows at the foot of the terraces, where water from the little valley lingers longest. We cut it twice each summer, just before it flowers, when the leaves smell strongest.\n\nIt makes a clean, cooling tea that stands up to a second steeping. Hot or iced, with or without sugar."
+    },
+    "facts": [
+      {
+        "label": {
+          "fr": "Plante",
+          "en": "Plant"
+        },
+        "value": {
+          "fr": "Mentha × piperita, feuilles",
+          "en": "Mentha × piperita, leaves"
+        }
+      },
+      {
+        "label": {
+          "fr": "Récolte",
+          "en": "Harvest"
+        },
+        "value": {
+          "fr": "juin et août 2026",
+          "en": "June and August 2026"
+        }
+      },
+      {
+        "label": {
+          "fr": "Séchage",
+          "en": "Drying"
+        },
+        "value": {
+          "fr": "à l’ombre, sur claies, 6 jours",
+          "en": "in the shade, on racks, 6 days"
+        }
+      },
+      {
+        "label": {
+          "fr": "Poids net",
+          "en": "Net weight"
+        },
+        "value": {
+          "fr": "30 g, environ 25 tasses",
+          "en": "30 g, about 25 cups"
+        }
+      }
+    ],
+    "price": 690,
+    "stock": 40,
+    "images": [
+      "menthe.jpg"
+    ]
+  },
+  {
+    "slug": "fleurs-de-mauve",
+    "name": {
+      "fr": "Fleurs de mauve",
+      "en": "Mallow flowers"
+    },
+    "summary": {
+      "fr": "Florale et ronde, une infusion violette",
+      "en": "Floral and round, brews violet"
+    },
+    "description": {
+      "fr": "La mauve sylvestre pousse toute seule au bord des terrasses ; nous lui avons simplement laissé deux rangs. Les fleurs se cueillent une à une, tous les deux jours, de mai à juillet : c’est notre récolte la plus lente, et la plus petite.\n\nInfusées, elles donnent une tisane douce au goût discret, d’un bleu violet qui vire au rose avec une goutte de citron. On l’utilise aussi en mélange : c’est elle qui colore La Veillée.",
+      "en": "Common mallow grows wild along the edges of the terraces; we simply gave it two rows of its own. The flowers are picked one by one, every other day, from May to July: our slowest harvest, and our smallest.\n\nThey make a gentle, quiet-tasting tea of a blue-violet colour that turns pink with a drop of lemon. It works well in blends too: it is what colours La Veillée."
+    },
+    "facts": [
+      {
+        "label": {
+          "fr": "Plante",
+          "en": "Plant"
+        },
+        "value": {
+          "fr": "Malva sylvestris, fleurs",
+          "en": "Malva sylvestris, flowers"
+        }
+      },
+      {
+        "label": {
+          "fr": "Récolte",
+          "en": "Harvest"
+        },
+        "value": {
+          "fr": "de mai à juillet 2026",
+          "en": "May to July 2026"
+        }
+      },
+      {
+        "label": {
+          "fr": "Séchage",
+          "en": "Drying"
+        },
+        "value": {
+          "fr": "à l’ombre, sur claies, 4 jours",
+          "en": "in the shade, on racks, 4 days"
+        }
+      },
+      {
+        "label": {
+          "fr": "Poids net",
+          "en": "Net weight"
+        },
+        "value": {
+          "fr": "20 g, environ 20 tasses",
+          "en": "20 g, about 20 cups"
+        }
+      }
+    ],
+    "price": 950,
+    "stock": 12,
+    "images": [
+      "mauve.jpg",
+      "mauve-pied.jpg"
+    ]
+  },
+  {
+    "slug": "la-veillee",
+    "name": {
+      "fr": "La Veillée",
+      "en": "La Veillée evening blend"
+    },
+    "summary": {
+      "fr": "Tilleul, verveine, mélisse et mauve",
+      "en": "Linden, lemon verbena, lemon balm and mallow"
+    },
+    "description": {
+      "fr": "La Veillée est notre seul mélange. Hélène l’a mis au point le premier hiver, pour avoir quelque chose à boire le soir qui ne soit ni trop fleuri ni trop citronné : du tilleul pour la rondeur, de la verveine et de la mélisse pour la fraîcheur, et quelques fleurs de mauve pour la couleur.\n\nLes quatre plantes viennent de la ferme et sont mélangées à la main, par petits lots.",
+      "en": "La Veillée is our only blend. Hélène worked it out the first winter, wanting something to drink in the evening that was neither too flowery nor too lemony: linden for roundness, lemon verbena and lemon balm for freshness, and a few mallow flowers for colour. (A veillée is the old French word for an evening spent together by the fire.)\n\nAll four plants come from the farm and are mixed by hand in small batches."
+    },
+    "facts": [
+      {
+        "label": {
+          "fr": "Composition",
+          "en": "Blend"
+        },
+        "value": {
+          "fr": "tilleul 40 %, verveine 25 %, mélisse 25 %, mauve 10 %",
+          "en": "linden 40%, lemon verbena 25%, lemon balm 25%, mallow 10%"
+        }
+      },
+      {
+        "label": {
+          "fr": "Récolte",
+          "en": "Harvest"
+        },
+        "value": {
+          "fr": "2026",
+          "en": "2026"
+        }
+      },
+      {
+        "label": {
+          "fr": "Poids net",
+          "en": "Net weight"
+        },
+        "value": {
+          "fr": "40 g, environ 30 tasses",
+          "en": "40 g, about 30 cups"
+        }
+      }
+    ],
+    "price": 890,
+    "stock": 36,
+    "images": [
+      "veillee.jpg"
+    ]
+  },
+  {
+    "slug": "coffret-quatre-tisanes",
+    "name": {
+      "fr": "Coffret quatre tisanes",
+      "en": "Four-tea gift box"
+    },
+    "summary": {
+      "fr": "Verveine, tilleul, menthe et La Veillée",
+      "en": "Lemon verbena, linden, peppermint and La Veillée"
+    },
+    "description": {
+      "fr": "Quatre petits sachets de 15 g pour découvrir la ferme : verveine odorante, tilleul, menthe poivrée et La Veillée. Ils sont emballés ensemble dans du papier kraft, fermés à la ficelle, avec une carte qui raconte d’où vient chaque plante et comment la préparer.\n\nLe coffret est préparé à la commande et part sans facture ni prix à l’intérieur : vous pouvez le faire livrer directement à la personne à qui vous l’offrez.",
+      "en": "Four small 15 g bags to get to know the farm: lemon verbena, linden, peppermint and La Veillée. They are wrapped together in kraft paper and tied with string, with a card telling where each plant grows and how to brew it.\n\nWe put the box together when you order and send it with no invoice or price inside, so you can have it delivered straight to the person you are giving it to."
+    },
+    "facts": [
+      {
+        "label": {
+          "fr": "Contenu",
+          "en": "Contents"
+        },
+        "value": {
+          "fr": "4 sachets de 15 g",
+          "en": "4 bags of 15 g"
+        }
+      },
+      {
+        "label": {
+          "fr": "Récolte",
+          "en": "Harvest"
+        },
+        "value": {
+          "fr": "2026",
+          "en": "2026"
+        }
+      },
+      {
+        "label": {
+          "fr": "Poids net",
+          "en": "Net weight"
+        },
+        "value": {
+          "fr": "60 g",
+          "en": "60 g"
+        }
+      }
+    ],
+    "price": 2600,
+    "stock": 15,
+    "images": [
+      "coffret.jpg"
+    ]
+  }
+]

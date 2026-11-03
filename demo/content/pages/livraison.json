@@ -1,0 +1,68 @@
+{
+  "slug": {
+    "fr": "livraison",
+    "en": "shipping"
+  },
+  "title": {
+    "fr": "Livraison et retours",
+    "en": "Shipping and returns"
+  },
+  "seo": {
+    "title": {
+      "fr": "Livraison et retours – Les Claies",
+      "en": "Shipping and returns – Les Claies"
+    },
+    "description": {
+      "fr": "Envoi le mardi et le vendredi en courrier suivi, partout en France métropolitaine. Retours sous quatorze jours.",
+      "en": "Sent on Tuesdays and Fridays by tracked post anywhere in mainland France. Returns within fourteen days."
+    },
+    "image": "enveloppes.jpg"
+  },
+  "layout": [
+    {
+      "blockType": "hero",
+      "heading": {
+        "fr": "Livraison et retours",
+        "en": "Shipping and returns"
+      },
+      "text": {
+        "fr": "Les commandes partent de la ferme le mardi et le vendredi, en courrier suivi.",
+        "en": "Orders leave the farm on Tuesdays and Fridays, by tracked post."
+      },
+      "image": "enveloppes.jpg"
+    },
+    {
+      "blockType": "richText",
+      "content": {
+        "fr": "## Où livrons-nous ?\n\nEn France métropolitaine, Corse comprise. Nous n’expédions pas encore dans les départements d’outre-mer ni à l’étranger.\n\n## Combien ça coûte ?\n\n4,90 € par commande, quel que soit le nombre de sachets. Les frais s’ajoutent au moment de la commande, avant le paiement.\n\n## Quand arrive le colis ?\n\nUne commande passée avant lundi soir part le mardi ; avant jeudi soir, elle part le vendredi. Comptez ensuite deux à quatre jours ouvrés.\n\n## Comment est-ce emballé ?\n\nLes sachets kraft voyagent dans une enveloppe en carton, sans plastique ni papier bulle. Le coffret part tel quel, dans son papier.\n\n## Retours\n\nVous avez quatorze jours après réception pour changer d’avis. Renvoyez-nous les sachets encore fermés : nous vous remboursons les produits dès leur arrivée. Les frais de retour restent à votre charge, sauf si l’erreur vient de nous.\n\nUn sachet abîmé à l’arrivée ? Envoyez-nous une photo et votre numéro de commande, nous le remplaçons.\n\nLes conditions complètes sont dans nos [mentions légales et conditions de vente](page:mentions-legales).",
+        "en": "## Where do we deliver?\n\nMainland France, Corsica included. We don’t ship to the overseas departments or abroad yet.\n\n## How much does it cost?\n\n€4.90 per order, however many bags are in it. It is added at checkout, before you pay.\n\n## When will it arrive?\n\nAn order placed by Monday evening leaves on Tuesday; one placed by Thursday evening leaves on Friday. Then allow two to four working days.\n\n## How is it packed?\n\nThe kraft bags travel in a cardboard envelope, with no plastic or bubble wrap. The gift box goes as it is, in its paper.\n\n## Returns\n\nYou have fourteen days from delivery to change your mind. Send the bags back unopened and we refund the products as soon as they arrive. Return postage is yours to pay, unless the mistake was ours.\n\nA bag damaged on arrival? Send us a photo and your order number and we will replace it.\n\nThe full terms are in our [legal notice and terms of sale](page:mentions-legales)."
+      }
+    },
+    {
+      "blockType": "callToAction",
+      "heading": {
+        "fr": "Un doute avant de commander ?",
+        "en": "Not sure before you order?"
+      },
+      "text": {
+        "fr": "Posez-nous vos questions sur une plante, une infusion ou une date de livraison.",
+        "en": "Ask us about a plant, a brew or a delivery date."
+      },
+      "link": {
+        "type": "page",
+        "slug": "contact",
+        "label": {
+          "fr": "Nous écrire",
+          "en": "Write to us"
+        }
+      }
+    },
+    {
+      "blockType": "richText",
+      "content": {
+        "fr": "*Ce site est une démonstration : rien n’est expédié.*",
+        "en": "*This site is a demo: nothing is shipped.*"
+      }
+    }
+  ]
+}
