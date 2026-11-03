@@ -1,0 +1,78 @@
+{
+  "slug": {
+    "fr": "tisanes",
+    "en": "herbal-teas"
+  },
+  "title": {
+    "fr": "Nos tisanes",
+    "en": "Our herbal teas"
+  },
+  "seo": {
+    "title": {
+      "fr": "Nos tisanes – Les Claies",
+      "en": "Our herbal teas – Les Claies"
+    },
+    "description": {
+      "fr": "Verveine, tilleul, menthe poivrée, mauve, La Veillée et un coffret : six tisanes de la récolte 2026, en feuilles et fleurs entières.",
+      "en": "Lemon verbena, linden, peppermint, mallow, La Veillée and a gift box: six teas from the 2026 harvest, as whole leaves and flowers."
+    },
+    "image": "theiere.jpg"
+  },
+  "layout": [
+    {
+      "blockType": "hero",
+      "heading": {
+        "fr": "Nos tisanes",
+        "en": "Our herbal teas"
+      },
+      "text": {
+        "fr": "Six tisanes de la récolte 2026, en feuilles et fleurs entières. Comptez une cuillère à soupe par tasse.",
+        "en": "Six teas from the 2026 harvest, as whole leaves and flowers. Allow one tablespoon per cup."
+      },
+      "image": "theiere.jpg"
+    },
+    {
+      "blockType": "productGrid",
+      "products": [
+        "verveine-odorante",
+        "tilleul",
+        "menthe-poivree",
+        "fleurs-de-mauve",
+        "la-veillee",
+        "coffret-quatre-tisanes"
+      ]
+    },
+    {
+      "blockType": "imageText",
+      "heading": {
+        "fr": "Préparer une tisane",
+        "en": "How to brew"
+      },
+      "content": {
+        "fr": "Faites chauffer l’eau sans la laisser bouillir à gros bouillons. Versez-la sur une cuillère à soupe de plantes par tasse, couvrez, et laissez infuser cinq à huit minutes. Les fleurs (tilleul, mauve) aiment un peu plus de temps que les feuilles.\n\nGardez les sachets fermés, au sec et à l’abri de la lumière. Une tisane se garde un an sans problème ; ensuite, elle perd peu à peu son parfum.",
+        "en": "Heat the water without letting it boil hard. Pour it over one tablespoon of plants per cup, cover, and leave for five to eight minutes. Flowers (linden, mallow) like a little longer than leaves.\n\nKeep the bags closed, dry and out of the light. A herbal tea keeps for a year without trouble; after that it slowly loses its scent."
+      },
+      "image": "preparation.jpg",
+      "imagePosition": "left"
+    },
+    {
+      "blockType": "callToAction",
+      "heading": {
+        "fr": "Pour offrir",
+        "en": "To give"
+      },
+      "text": {
+        "fr": "Le coffret réunit quatre tisanes en petits sachets, emballées dans du papier kraft avec une carte de la ferme.",
+        "en": "The gift box holds four teas in small bags, wrapped in kraft paper with a card from the farm."
+      },
+      "link": {
+        "type": "product",
+        "slug": "coffret-quatre-tisanes",
+        "label": {
+          "fr": "Voir le coffret",
+          "en": "See the gift box"
+        }
+      }
+    }
+  ]
+}

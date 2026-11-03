@@ -1,0 +1,78 @@
+{
+  "header": [
+    {
+      "type": "page",
+      "slug": "tisanes",
+      "label": {
+        "fr": "Nos tisanes",
+        "en": "Our teas"
+      }
+    },
+    {
+      "type": "page",
+      "slug": "la-ferme",
+      "label": {
+        "fr": "La ferme",
+        "en": "The farm"
+      }
+    },
+    {
+      "type": "page",
+      "slug": "livraison",
+      "label": {
+        "fr": "Livraison",
+        "en": "Shipping"
+      }
+    },
+    {
+      "type": "page",
+      "slug": "contact",
+      "label": {
+        "fr": "Contact",
+        "en": "Contact"
+      }
+    }
+  ],
+  "footer": [
+    {
+      "type": "page",
+      "slug": "tisanes",
+      "label": {
+        "fr": "Nos tisanes",
+        "en": "Our teas"
+      }
+    },
+    {
+      "type": "page",
+      "slug": "la-ferme",
+      "label": {
+        "fr": "La ferme",
+        "en": "The farm"
+      }
+    },
+    {
+      "type": "page",
+      "slug": "livraison",
+      "label": {
+        "fr": "Livraison et retours",
+        "en": "Shipping and returns"
+      }
+    },
+    {
+      "type": "page",
+      "slug": "contact",
+      "label": {
+        "fr": "Contact",
+        "en": "Contact"
+      }
+    },
+    {
+      "type": "page",
+      "slug": "mentions-legales",
+      "label": {
+        "fr": "Mentions légales et CGV",
+        "en": "Legal notice and terms"
+      }
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "slug": {
+    "fr": "home",
+    "en": "home"
+  },
+  "title": {
+    "fr": "Accueil",
+    "en": "Home"
+  },
+  "seo": {
+    "title": {
+      "fr": "Les Claies – plantes à tisane des Baronnies",
+      "en": "Les Claies – herbal teas from the Baronnies"
+    },
+    "description": {
+      "fr": "Verveine, tilleul, menthe et mauve cultivés en terrasses à Combe-Rousse, séchés à l’ombre sur claies et envoyés partout en France métropolitaine.",
+      "en": "Lemon verbena, linden, peppermint and mallow, grown on terraces at Combe-Rousse, dried in the shade on wooden racks and sent anywhere in mainland France."
+    },
+    "image": "mains-fleurs.jpg"
+  },
+  "layout": [
+    {
+      "blockType": "hero",
+      "heading": {
+        "fr": "Des plantes à tisane cueillies, séchées et ensachées à la ferme.",
+        "en": "Herbal tea plants picked, dried and bagged on the farm."
+      },
+      "text": {
+        "fr": "Verveine, tilleul, menthe et mauve : tout pousse sur nos terrasses des Baronnies et part chez vous en courrier suivi.",
+        "en": "Lemon verbena, linden, peppermint and mallow from our terraces in the Baronnies, sent to you by tracked post."
+      },
+      "image": "mains-fleurs.jpg",
+      "link": {
+        "type": "page",
+        "slug": "tisanes",
+        "label": {
+          "fr": "Voir les tisanes",
+          "en": "See the teas"
+        }
+      }
+    },
+    {
+      "blockType": "productGrid",
+      "heading": {
+        "fr": "Récolte 2026",
+        "en": "The 2026 harvest"
+      },
+      "products": [
+        "verveine-odorante",
+        "tilleul",
+        "fleurs-de-mauve",
+        "la-veillee"
+      ]
+    },
+    {
+      "blockType": "imageText",
+      "heading": {
+        "fr": "Combe-Rousse, 650 mètres d’altitude",
+        "en": "Combe-Rousse, 650 metres up"
+      },
+      "content": {
+        "fr": "Nos terrasses regardent le sud, au-dessus d’un vallon de chênes verts et de genêts. Le sol est maigre et caillouteux, les étés sont secs : la verveine y pousse moins vite qu’en plaine, mais ses feuilles sont plus parfumées.\n\nNous cueillons le matin, une fois la rosée partie, et la récolte est au séchoir dans l’heure.",
+        "en": "Our terraces face south, above a little valley of holm oak and broom. The soil is thin and stony and the summers are dry: lemon verbena grows more slowly here than down on the plain, but its leaves smell stronger.\n\nWe pick in the morning once the dew has gone, and the harvest is in the drying room within the hour."
+      },
+      "image": "garrigue.jpg",
+      "imagePosition": "right",
+      "caption": {
+        "fr": "Le chemin des terrasses, en juillet",
+        "en": "The terrace path in July"
+      }
+    },
+    {
+      "blockType": "richText",
+      "content": {
+        "fr": "## De la terrasse au sachet\n\n1. **La cueillette.** À la main, au sécateur, plante par plante. La menthe et la mélisse se coupent deux fois par été, la verveine jusqu’aux premiers froids.\n2. **Le séchage.** À l’ombre, sur les claies du séchoir, avec l’air qui passe dessous. Il faut quatre à huit jours selon la plante et le temps qu’il fait.\n3. **Le tri et l’ensachage.** Nous retirons les tiges à la main et gardons les feuilles entières. Chaque sachet est fermé, daté et étiqueté à la ferme.",
+        "en": "## From terrace to bag\n\n1. **Picking.** By hand, with secateurs, plant by plant. Mint and lemon balm are cut twice a summer, lemon verbena until the first frosts.\n2. **Drying.** In the shade, on the racks of the drying room, with air moving underneath. It takes four to eight days depending on the plant and the weather.\n3. **Sorting and bagging.** We strip the stems by hand and keep the leaves whole. Every bag is sealed, dated and labelled on the farm."
+      }
+    },
+    {
+      "blockType": "callToAction",
+      "heading": {
+        "fr": "Les commandes partent le mardi et le vendredi.",
+        "en": "Orders leave the farm on Tuesdays and Fridays."
+      },
+      "text": {
+        "fr": "En courrier suivi, partout en France métropolitaine.",
+        "en": "By tracked post, anywhere in mainland France."
+      },
+      "link": {
+        "type": "page",
+        "slug": "livraison",
+        "label": {
+          "fr": "Livraison et retours",
+          "en": "Shipping and returns"
+        }
+      }
+    }
+  ]
+}
