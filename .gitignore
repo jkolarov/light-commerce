@@ -7,3 +7,7 @@ uploads/
 *.db
 *.sqlite
 .DS_Store
+
+# local tooling
+graft/
+.claude/settings.local.json
