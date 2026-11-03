@@ -3,9 +3,10 @@ import { seoPlugin } from '@payloadcms/plugin-seo'
 import { Plugin } from 'payload'
 import { GenerateTitle, GenerateURL } from '@payloadcms/plugin-seo/types'
 import { FixedToolbarFeature, HeadingFeature, lexicalEditor } from '@payloadcms/richtext-lexical'
-import { ecommercePlugin } from '@payloadcms/plugin-ecommerce'
+import { EUR, ecommercePlugin } from '@payloadcms/plugin-ecommerce'
+import type { CollectionOverride } from '@payloadcms/plugin-ecommerce/types'
 
-import { stripeAdapter } from '@payloadcms/plugin-ecommerce/payments/stripe'
+import { spikeStripeAdapter } from '@/modules/shop/payments/stripe'
 
 import { Page, Product } from '@/payload-types'
 import { getServerSideURL } from '@/utilities/getURL'
@@ -15,6 +16,22 @@ import { adminOnlyFieldAccess } from '@/access/adminOnlyFieldAccess'
 import { customerOnlyFieldAccess } from '@/access/customerOnlyFieldAccess'
 import { isAdmin } from '@/access/isAdmin'
 import { isDocumentOwner } from '@/access/isDocumentOwner'
+
+// Spike: admin reduction experiments. SPIKE_ADMIN_MODE=hidden|readonly|off (default hidden)
+const adminMode = process.env.SPIKE_ADMIN_MODE || 'hidden'
+const deny = () => false
+const hide: CollectionOverride = ({ defaultCollection }) =>
+  adminMode === 'off'
+    ? defaultCollection
+    : { ...defaultCollection, admin: { ...defaultCollection.admin, hidden: true } }
+const readOnly: CollectionOverride = ({ defaultCollection }) =>
+  adminMode === 'off'
+    ? defaultCollection
+    : {
+        ...defaultCollection,
+        access: { ...defaultCollection.access, create: deny, update: deny, delete: deny },
+        admin: { ...defaultCollection.admin, group: false },
+      }
 
 const generateTitle: GenerateTitle<Product | Page> = ({ doc }) => {
   return doc?.title ? `${doc.title} | Payload Ecommerce Template` : 'Payload Ecommerce Template'
@@ -84,9 +101,13 @@ export const plugins: Plugin[] = [
       isAdmin,
       isDocumentOwner,
     },
+    addresses: { addressesCollectionOverride: hide },
+    carts: { cartsCollectionOverride: hide },
+    currencies: { supportedCurrencies: [EUR], defaultCurrency: 'EUR' },
     customers: {
       slug: 'users',
     },
+    transactions: { transactionsCollectionOverride: readOnly },
     orders: {
       ordersCollectionOverride: ({ defaultCollection }) => ({
         ...defaultCollection,
@@ -117,15 +138,16 @@ export const plugins: Plugin[] = [
     },
     payments: {
       paymentMethods: [
-        stripeAdapter({
-          secretKey: process.env.STRIPE_SECRET_KEY!,
-          publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
-          webhookSecret: process.env.STRIPE_WEBHOOKS_SIGNING_SECRET!,
-        }),
+        spikeStripeAdapter(),
       ],
     },
     products: {
       productsCollectionOverride: ProductsCollection,
+      variants: {
+        variantsCollectionOverride: hide,
+        variantOptionsCollectionOverride: hide,
+        variantTypesCollectionOverride: hide,
+      },
     },
   }),
 ]

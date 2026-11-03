@@ -377,7 +377,7 @@ export const seed = async ({
   const pendingTransaction = await payload.create({
     collection: 'transactions',
     data: {
-      currency: 'USD',
+      currency: 'EUR',
       customer: customer.id,
       paymentMethod: 'stripe',
       stripe: {
@@ -393,7 +393,7 @@ export const seed = async ({
   const succeededTransaction = await payload.create({
     collection: 'transactions',
     data: {
-      currency: 'USD',
+      currency: 'EUR',
       customer: customer.id,
       paymentMethod: 'stripe',
       stripe: {
@@ -419,7 +419,7 @@ export const seed = async ({
     collection: 'carts',
     data: {
       customer: customer.id,
-      currency: 'USD',
+      currency: 'EUR',
       items: [
         {
           product: productTshirt.id,
@@ -437,7 +437,7 @@ export const seed = async ({
   const abandonedCart = await payload.create({
     collection: 'carts',
     data: {
-      currency: 'USD',
+      currency: 'EUR',
       createdAt: oldTimestamp,
       items: [
         {
@@ -454,7 +454,7 @@ export const seed = async ({
     collection: 'carts',
     data: {
       customer: customer.id,
-      currency: 'USD',
+      currency: 'EUR',
       purchasedAt: new Date().toISOString(),
       subtotal: 7499,
       items: [
@@ -485,7 +485,7 @@ export const seed = async ({
     collection: 'orders',
     data: {
       amount: 7499,
-      currency: 'USD',
+      currency: 'EUR',
       customer: customer.id,
       shippingAddress: baseAddressUSData,
       items: [
@@ -510,7 +510,7 @@ export const seed = async ({
     collection: 'orders',
     data: {
       amount: 7499,
-      currency: 'USD',
+      currency: 'EUR',
       customer: customer.id,
       shippingAddress: baseAddressUSData,
       items: [

@@ -81,12 +81,12 @@ export default async function ProductPage({ params }: Args) {
       })
     : product.inventory! > 0
 
-  let price = product.priceInUSD
+  let price = product.priceInEUR
 
   if (product.enableVariants && product?.variants?.docs?.length) {
     price = product?.variants?.docs?.reduce((acc, variant) => {
-      if (typeof variant === 'object' && variant?.priceInUSD && acc && variant?.priceInUSD > acc) {
-        return variant.priceInUSD
+      if (typeof variant === 'object' && variant?.priceInEUR && acc && variant?.priceInEUR > acc) {
+        return variant.priceInEUR
       }
       return acc
     }, price)
@@ -169,7 +169,7 @@ function RelatedProducts({ products }: { products: Product[] }) {
             <Link className="relative h-full w-full" href={`/products/${product.slug}`}>
               <GridTileImage
                 label={{
-                  amount: product.priceInUSD!,
+                  amount: product.priceInEUR!,
                   title: product.title,
                 }}
                 media={product.meta?.image as Media}
@@ -207,7 +207,7 @@ const queryProductBySlug = async ({ slug }: { slug: string }) => {
     populate: {
       variants: {
         title: true,
-        priceInUSD: true,
+        priceInEUR: true,
         inventory: true,
         options: true,
       },

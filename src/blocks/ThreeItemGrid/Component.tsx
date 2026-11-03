@@ -8,13 +8,13 @@ import type { DefaultDocumentIDType } from 'payload'
 type Props = { item: Product; priority?: boolean; size: 'full' | 'half' }
 
 export const ThreeItemGridItem: React.FC<Props> = ({ item, size }) => {
-  let price = item.priceInUSD
+  let price = item.priceInEUR
 
   if (item.enableVariants && item.variants?.docs?.length) {
     const variant = item.variants.docs[0]
 
-    if (variant && typeof variant === 'object' && variant.priceInUSD) {
-      price = variant.priceInUSD
+    if (variant && typeof variant === 'object' && variant.priceInEUR) {
+      price = variant.priceInEUR
     }
   }
 
