@@ -45,7 +45,7 @@ Several agents work on this repo at the same time. Stay out of each other's file
 - **Public routes belong to modules:** `cms` owns the catch-all page route; `shop` owns `shop/`, `cart/`, `checkout/` and `order/` under `src/app/(frontend)/[locale]/`. Route files stay thin and import from their module.
 - **Generated files are regenerated, never hand-merged:** `payload-types.ts` and the admin import map. Rebase, regenerate, commit. CI fails if they are stale.
 - **Migrations:** until the first deploy the schema is pushed in development. After the baseline migration exists, a PR that changes the schema regenerates its migration after rebasing on `main`.
-- **Branch and PR:** name the branch after the Linear issue (for example `flu-12-product-page`), and start the PR title with the issue ID. Rebase on `main` before opening the PR.
+- **Branch and PR:** use the issue's git branch name from Linear (for example `jorokolarov/flu-12-product-page`), and start the PR title with the issue ID (`FLU-12: ...`). Rebase on `main` before opening the PR. Shared names and signatures are in `docs/superpowers/plans/2026-11-03-phase-1.md` ("Shared contracts"); don't invent your own for anything listed there.
 - **Done means:** the ticket's acceptance criteria are met, and typecheck, lint, tests and build pass locally.
 
 ## Related projects
