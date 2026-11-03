@@ -88,7 +88,7 @@ Every photo is a JPEG, at most 2000 px wide and under 400 KB, with no metadata. 
 
 ### Money
 
-`price` is an integer in **cents of EUR, tax included** (`790` = 7,90 €). VAT for display is 5,5 % (food), set in `light.config.ts`, not here.
+`price` is an integer in **cents of EUR, tax included** (`790` = €7.90). VAT for display is 5.5% (food), set in `light.config.ts`, not here.
 
 ## `content/pages/<slug>.json`
 
@@ -119,6 +119,8 @@ One file per page. The file name is the page's FR slug. All pages are meant to b
 ### Blocks
 
 Every block has a `blockType` that matches the Payload block slug: `hero`, `richText`, `imageText`, `callToAction`, `productGrid`.
+
+The block slugs come from the plan's shared contracts. The field names inside each block were written here first, before the blocks exist (S10 builds the four CMS blocks, S20 builds `productGrid`). Those tickets should use the same field names. Where a block ends up with different names, S23 maps them, and the field meanings below still hold.
 
 #### `hero`
 
@@ -283,7 +285,7 @@ The six products:
 | `menthe-poivree` | Menthe poivrée | 690 | 40 | `menthe.jpg` |
 | `fleurs-de-mauve` | Fleurs de mauve | 950 | 12 | `mauve.jpg`, `mauve-pied.jpg` |
 | `la-veillee` | La Veillée | 890 | 36 | `veillee.jpg` |
-| `coffret-quatre-tisanes` | Coffret quatre tisanes | 2600 | 15 | `coffret.jpg` |
+| `coffret-quatre-tisanes` | Coffret quatre tisanes | 1900 | 15 | `coffret.jpg` |
 
 ## `content/media.json`
 
@@ -337,9 +339,9 @@ The shipping and legal pages state facts that live in config. If you change the 
 
 | Copy says | Config |
 |---|---|
-| 4,90 € shipping per order, whatever the size | `shop.shipping.flatRate: 490` |
+| €4.90 shipping per order, whatever the size | `shop.shipping.flatRate: 490` |
 | Delivery to mainland France and Corsica only | `shop.shipping.countries: ['FR']` |
-| Prices include VAT at 5,5 % | `shop.pricesIncludeTax: true`, `shop.displayTaxRate: 5.5` |
+| Prices include VAT at 5.5% | `shop.pricesIncludeTax: true`, `shop.displayTaxRate: 5.5` |
 | Prices in euros | `shop.currency: 'EUR'` |
 
 `brand.md` lists the other suggested config values (site name, contact email, theme).

@@ -56,7 +56,7 @@ Computed with the WCAG formula on the hex values above. All pairs reach AA for b
 | `primary` #7A3B6E (links) | `background` #F0F2EA | 6.94:1 | pass |
 | `primary` #7A3B6E (links) | `surface` #E0E6D5 | 6.14:1 | pass |
 
-`surface` against `background` is only 1.13:1, on purpose: tiles are a quiet tint, not a box. Edges that matter (cards, inputs, steppers) need a hairline border, for example `text` at about 15 % opacity, and input borders must reach 3:1 against their background.
+`surface` against `background` is only 1.13:1, on purpose: tiles are a quiet tint, not a box. Edges that matter (cards, inputs, steppers) need a hairline border, for example `text` at about 15% opacity, and input borders must reach 3:1 against their background.
 
 For `light.config.ts`:
 
