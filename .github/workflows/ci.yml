@@ -25,11 +25,23 @@ env:
 
 jobs:
   check:
+    # The same steps in each setup of design 4.9: each module must work with the other one off.
+    # LIGHT_CI_MODULES switches modules without editing light.config.ts (src/config/modulesOverride.ts).
     # Every step runs a package.json script, so CI and local runs stay the same.
-    # S03 turns this job into a matrix of setups (both modules, CMS only, shop only):
-    # add `strategy.matrix` here and pass the setup to the steps through `env`.
-    name: Typecheck, lint, test, build
+    name: "${{ matrix.setup }}: typecheck, lint, test, build"
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - setup: Both modules
+            modules: cms,shop
+          - setup: CMS only
+            modules: cms
+          - setup: Shop only
+            modules: shop
+    env:
+      LIGHT_CI_MODULES: ${{ matrix.modules }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6 # pnpm version from `packageManager` in package.json
@@ -42,11 +54,18 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
       - run: pnpm build
+      # `payload build` regenerates the types. With a module off they go to a scratch file
+      # (src/core/generatedTypes.ts), so `next build` type-checked every module against the
+      # committed src/payload-types.ts. Check that the build left that file as committed.
+      - name: The build left src/payload-types.ts as committed
+        run: git diff --exit-code -- src/payload-types.ts
 
   generated:
-    # Generated files reflect the default setup (both modules on), so this stays one job.
+    # The committed generated files describe both modules, so this check runs with both on.
     name: Generated files are up to date
     runs-on: ubuntu-latest
+    env:
+      LIGHT_CI_MODULES: cms,shop
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
