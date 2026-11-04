@@ -63,6 +63,18 @@ describe('server startup', () => {
     expect(exit).toHaveBeenCalledWith(1)
   })
 
+  it('stops a production server without SMTP_HOST, and starts with it', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('SMTP_HOST', '')
+    await register()
+    expect(logError).toHaveBeenCalledWith(expect.stringContaining('SMTP_HOST is not set'))
+    expect(exit).toHaveBeenCalledWith(1)
+    exit.mockClear()
+    vi.stubEnv('SMTP_HOST', 'mailpit')
+    await register()
+    expect(exit).not.toHaveBeenCalled()
+  })
+
   it('refuses LIGHT_CI_MODULES on a production server', async () => {
     // It would switch a module off without a word: on a shop, payments would create no orders.
     vi.stubEnv('NODE_ENV', 'production')
@@ -77,6 +89,7 @@ describe('server startup', () => {
 
   it('accepts LIGHT_CI_MODULES on a production build in CI, with a warning', async () => {
     vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('SMTP_HOST', 'mailpit') // a production server needs SMTP (src/core/email)
     process.env.CI = 'true'
     process.env.LIGHT_CI_MODULES = 'cms'
     await register()

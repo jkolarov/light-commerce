@@ -19,10 +19,12 @@
     "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
     "generate:check": "node scripts/generate-check.mjs",
+    "email:test": "cross-env NODE_OPTIONS=--no-deprecation payload run scripts/email-test.ts",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload"
   },
   "dependencies": {
     "@payloadcms/db-sqlite": "4.0.0-beta.6",
+    "@payloadcms/email-nodemailer": "4.0.0-beta.6",
     "@payloadcms/next": "4.0.0-beta.6",
     "@payloadcms/plugin-ecommerce": "4.0.0-beta.6",
     "@payloadcms/plugin-seo": "4.0.0-beta.6",

@@ -4,5 +4,7 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     const { stopIfConfigIsBroken } = await import('./config/startup')
     await stopIfConfigIsBroken()
+    const { stopIfSmtpIsMissing } = await import('./core/email/startup')
+    stopIfSmtpIsMissing()
   }
 }

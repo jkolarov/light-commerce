@@ -36,6 +36,7 @@ Node.js 24 (24.22.1+) and pnpm 12 (`packageManager` in `package.json`). First co
 - `pnpm generate`: regenerate `src/payload-types.ts` and `src/app/(payload)/admin/importMap.js`. Run it after changing collections, fields or admin components, and commit the result.
 - `pnpm generate:check`: fails if those two files are stale. It always compares with both modules on, and never changes your tree.
 - `pnpm payload <command>`: the Payload CLI (`pnpm payload --help`).
+- `pnpm email:test <address>`: sends a test email through the configured transport. With Mailpit up (below) and `SMTP_HOST=localhost`, `SMTP_PORT=<MAILPIT_SMTP_PORT>` in `.env`, it shows up in Mailpit's UI. Without `SMTP_HOST` emails are only logged; in production a missing `SMTP_HOST` stops startup. Modules send with `payload.sendEmail(...)`; the sender is `email` in `light.config.ts` (`src/core/email/`).
 - `docker compose -f compose.dev.yml up -d mailpit`: Mailpit (SMTP `127.0.0.1:1025`, web UI `127.0.0.1:8025`; override with `MAILPIT_SMTP_PORT`, `MAILPIT_UI_PORT`; this machine's booking-platform Mailpit already holds 1026 and 8026). `--profile app` also runs the production image; see the README, "Docker". `GET /healthz` is the health check.
 
 A broken `light.config.ts` fails `pnpm test`, `pnpm build` and the server's startup (`dev`, `start`, Docker: `src/instrumentation.ts`), with a list of every bad setting and what it expects.
