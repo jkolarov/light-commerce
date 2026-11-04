@@ -32,6 +32,9 @@
     "text": "Le site a rencontré un problème en préparant cette page. Réessayez dans un instant ; si le problème continue, repartez de l’accueil.",
     "retry": "Réessayer"
   },
+  "home": {
+    "description": "Découvrez nos produits."
+  },
   "shop": {
     "title": "Boutique",
     "price": "Prix",

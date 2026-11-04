@@ -9,6 +9,7 @@ import { getLightConfig } from '@/config'
 import type { Locale } from '@/core/i18n/locales'
 import { locales } from '@/core/i18n/locales'
 import type { Media } from '@/payload-types'
+import { pageTitle, titleText } from '@/theme/title'
 
 import { pagePath } from '../fields/link'
 import { RenderBlocks, type BlockComponents } from '../components/RenderBlocks'
@@ -56,13 +57,13 @@ export async function cmsPageMetadata(locale: Locale, slug: string): Promise<Met
   const languages = Object.fromEntries(
     locales.flatMap((l) => (slugs[l] ? [[l, absolute(pagePath(slugs[l], l))]] : [])),
   )
-  const title = page.meta?.title || page.title || undefined
+  const title = pageTitle(page.meta?.title || page.title, getLightConfig().site.name)
   const description = page.meta?.description || undefined
   const image = imageUrl(page.meta?.image)
   return {
     title,
     description,
     alternates: { canonical: languages[locale], languages },
-    openGraph: { title, description, url: languages[locale], locale, images: image ? [image] : undefined },
+    openGraph: { title: titleText(title), description, url: languages[locale], locale, images: image ? [image] : undefined },
   }
 }

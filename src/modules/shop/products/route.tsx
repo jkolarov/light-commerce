@@ -8,6 +8,7 @@ import { cache } from 'react'
 import { getLightConfig } from '@/config'
 import type { Locale } from '@/core/i18n/locales'
 import { asMedia, shareImage } from '@/theme/media'
+import { pageTitle, titleText } from '@/theme/title'
 
 import { ProductDetails } from '../components/ProductDetails'
 import { findPublishedLocales, findPublishedProduct } from './load'
@@ -46,7 +47,7 @@ export async function productMetadata(locale: Locale, slug: string): Promise<Met
   const product = await loadProduct(locale, slug)
   if (!product) return {}
   const locales = await findPublishedLocales(await getPayload({ config }), product.id, getLightConfig().locales.available)
-  const title = product.title?.trim() || undefined
+  const title = pageTitle(product.title, getLightConfig().site.name)
   const description = product.summary?.trim() || undefined
   const photo = asMedia(product.images?.[0])
   const image = photo ? shareImage(photo) : undefined
@@ -57,7 +58,7 @@ export async function productMetadata(locale: Locale, slug: string): Promise<Met
     alternates: links,
     openGraph: {
       type: 'website',
-      title,
+      title: titleText(title),
       description,
       url: links.canonical,
       locale,
@@ -70,5 +71,6 @@ export async function productMetadata(locale: Locale, slug: string): Promise<Met
 export async function shopMetadata(locale: Locale): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'shop' })
   const links = alternates(locale, shopPath)
-  return { title: t('title'), alternates: links, openGraph: { type: 'website', title: t('title'), url: links.canonical, locale } }
+  const title = pageTitle(t('title'), getLightConfig().site.name)
+  return { title, alternates: links, openGraph: { type: 'website', title: titleText(title), url: links.canonical, locale } }
 }
