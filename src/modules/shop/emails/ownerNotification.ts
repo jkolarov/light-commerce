@@ -6,6 +6,7 @@ import { formatMoney } from '../money'
 import { html } from './html'
 import { box, button, emailDocument, heading, link, paragraph, textLines } from './layout'
 import { emailTranslator } from './messages'
+import { emailNotice } from './notice'
 import { addressHtml, addressText, orderHeading, summaryHtml, summaryText } from './orderBlocks'
 import type { RenderedEmail } from './orderConfirmation'
 import { summarizeOrder } from './summary'
@@ -21,8 +22,10 @@ export const adminOrderUrl = (order: Pick<Order, 'id'>, adminRoute = '/admin') =
 
 /** `adminRoute`: Payload's `routes.admin` (the sender passes it; `/admin` by default). */
 export function renderOwnerNotification(order: Order, opts: { adminRoute?: string } = {}): RenderedEmail {
-  const { site, locales } = getLightConfig()
+  const config = getLightConfig()
+  const { site, locales } = config
   const locale = locales.default
+  const notice = emailNotice(config, locale)
   const t = emailTranslator(locale)
   const summary = summarizeOrder(order, locale)
   const context = { summary, t, locale }
@@ -65,7 +68,7 @@ ${summary.email ? paragraph(t('owner.replyHint'), { muted: true }) : ''}`
 
   return {
     subject,
-    html: emailDocument({ lang: locale, title: subject, preview: t('owner.preview', { name: summary.name ?? summary.email ?? '', total }), body }),
-    text: text.replace(/\n{3,}/g, '\n\n'),
+    html: emailDocument({ lang: locale, title: subject, preview: t('owner.preview', { name: summary.name ?? summary.email ?? '', total }), body, notice }),
+    text: [text, notice].filter(Boolean).join('\n\n').replace(/\n{3,}/g, '\n\n'),
   }
 }

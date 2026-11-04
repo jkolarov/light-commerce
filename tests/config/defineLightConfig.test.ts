@@ -32,6 +32,15 @@ describe('defineLightConfig', () => {
     expect(defineLightConfig(input).shop?.displayTaxRate).toBe(5.5)
   })
 
+  it('accepts an email notice in some languages, or none', () => {
+    const input = validInput()
+    expect(defineLightConfig(input).email.notice).toBeUndefined()
+    input.email.notice = { fr: 'Boutique de démonstration : rien n’est expédié.' }
+    expect(defineLightConfig(input).email.notice).toEqual({ fr: 'Boutique de démonstration : rien n’est expédié.' })
+    input.email.notice = { fr: 'Démonstration.', en: 'A demo.' }
+    expect(defineLightConfig(input).email.notice).toEqual({ fr: 'Démonstration.', en: 'A demo.' })
+  })
+
   it('accepts a config without a shop section when the shop is off', () => {
     const input = validInput()
     input.modules.shop = false
@@ -116,6 +125,23 @@ describe('defineLightConfig', () => {
       expect(problemsOf((c) => (c.email.fromAddress = 'shop at example.com'))).toEqual([
         'email.fromAddress: expected an email address, like "hello@example.com"',
       ])
+    })
+
+    it('an email notice in a language the code does not know', () => {
+      expect(problemsOf((c) => (c.email.notice = { de: 'Ein Demo.' }))).toEqual(['email.notice.de: unknown setting'])
+    })
+
+    it('an empty email notice', () => {
+      expect(problemsOf((c) => (c.email.notice = { fr: '  ' }))).toEqual(['email.notice.fr: must not be empty'])
+    })
+
+    it('an email notice that is not one line per language', () => {
+      expect(problemsOf((c) => (c.email.notice = 'A demo.'))).toEqual(['email.notice: expected one line per language, like { fr: "…", en: "…" }'])
+    })
+
+    it('an email notice too long for one line, or on several', () => {
+      expect(problemsOf((c) => (c.email.notice = { en: 'x'.repeat(301) }))).toEqual(['email.notice.en: one short line: 300 characters at most'])
+      expect(problemsOf((c) => (c.email.notice = { en: 'A demo.\nNothing is shipped.' }))).toEqual(['email.notice.en: one short line: no line breaks'])
     })
 
     it('a site URL that is not an http(s) URL', () => {

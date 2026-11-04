@@ -79,10 +79,11 @@ export function lineRow(name: string, detail: string, amount: string | null, fir
 export const textLines = (lines: string[]): SafeHtml => html`${lines.map((line, index) => html`${index ? html`<br>` : ''}${line}`)}`
 
 /**
- * The whole email: the site's name on top, `body` on a card, a footer with the site's address.
- * `preview` is the line inboxes show after the subject (hidden in the email itself).
+ * The whole email: the site's name on top, `body` on a card, a footer with `notice` (the site's
+ * `email.notice`, when it has one) and the site's address. `preview` is the line inboxes show
+ * after the subject (hidden in the email itself).
  */
-export function emailDocument(parts: { lang: Locale; title: string; preview: string; body: SafeHtml }): string {
+export function emailDocument(parts: { lang: Locale; title: string; preview: string; body: SafeHtml; notice?: string | null }): string {
   const { site } = getLightConfig()
   const { colors, heading: headingFont, body: bodyFont } = look()
   return html`<!DOCTYPE html>
@@ -104,7 +105,7 @@ export function emailDocument(parts: { lang: Locale; title: string; preview: str
 <tr><td bgcolor="${colors.background}" style="background-color:${colors.background};border-radius:4px;padding:32px 28px;font-family:${bodyFont};font-size:16px;line-height:1.55;color:${colors.text};">
 ${parts.body}
 </td></tr>
-<tr><td style="padding:18px 8px 0;font-family:${bodyFont};font-size:13px;line-height:1.5;color:${colors.muted};">${site.name} · ${link(site.url, new URL(site.url).host)}</td></tr>
+<tr><td style="padding:18px 8px 0;font-family:${bodyFont};font-size:13px;line-height:1.5;color:${colors.muted};">${parts.notice ? html`${parts.notice}<br>` : ''}${site.name} · ${link(site.url, new URL(site.url).host)}</td></tr>
 </table>
 </td></tr>
 </table>

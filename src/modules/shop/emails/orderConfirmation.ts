@@ -6,6 +6,7 @@ import { orderPath } from '../checkout/paths'
 import { html } from './html'
 import { button, emailDocument, heading, linkWithin, paragraph } from './layout'
 import { emailTranslator } from './messages'
+import { emailNotice } from './notice'
 import { addressHtml, addressText, orderHeading, summaryHtml, summaryText } from './orderBlocks'
 import { summarizeOrder } from './summary'
 
@@ -23,8 +24,10 @@ export function orderPageUrl(order: Order, locale: Locale): string | null {
 }
 
 export function renderOrderConfirmation(order: Order, locale: Locale): RenderedEmail {
-  const { site } = getLightConfig()
+  const config = getLightConfig()
+  const { site } = config
   const t = emailTranslator(locale)
+  const notice = emailNotice(config, locale)
   const summary = summarizeOrder(order, locale)
   const context = { summary, t, locale }
   const url = orderPageUrl(order, locale)
@@ -65,7 +68,7 @@ ${paragraph(html`${t('confirmation.signOff')}<br>${site.name}`)}`
 
   return {
     subject,
-    html: emailDocument({ lang: locale, title: subject, preview: t('confirmation.preview'), body }),
-    text: text.replace(/\n{3,}/g, '\n\n'),
+    html: emailDocument({ lang: locale, title: subject, preview: t('confirmation.preview'), body, notice }),
+    text: [text, notice].filter(Boolean).join('\n\n').replace(/\n{3,}/g, '\n\n'),
   }
 }

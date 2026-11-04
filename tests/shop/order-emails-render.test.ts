@@ -3,6 +3,7 @@ import { expect, it } from 'vitest'
 import { getLightConfig } from '@/config'
 import { formatMoney } from '@/modules/shop/money'
 import { renderOrderConfirmation } from '@/modules/shop/emails/orderConfirmation'
+import { emailNotice } from '@/modules/shop/emails/notice'
 import { renderOwnerNotification } from '@/modules/shop/emails/ownerNotification'
 import type { Order, Product } from '@/payload-types'
 
@@ -158,6 +159,26 @@ describeWithShop('order emails: what they say', () => {
       expect(text).not.toMatch(/<[a-z]/i)
       expect(text.length).toBeGreaterThan(100)
     }
+  })
+
+  it('ends both emails with the site’s notice (light.config.ts, `email.notice`), in the email’s language', () => {
+    const config = getLightConfig()
+    const notice = (locale: 'fr' | 'en') => emailNotice(config, locale)!
+    expect(notice('fr')).toBeTruthy() // the demo sets one
+    const buyer = renderOrderConfirmation(paidOrder(), 'en')
+    expect(buyer.text.trimEnd().endsWith(notice('en'))).toBe(true)
+    expect(buyer.html).toContain(notice('en'))
+    const owner = renderOwnerNotification(paidOrder())
+    expect(owner.text.trimEnd().endsWith(notice(config.locales.default))).toBe(true)
+    expect(owner.html).toContain(notice(config.locales.default))
+  })
+
+  it('takes the notice in the email’s language, else the default language’s, else none', () => {
+    const base = { locales: { available: ['fr', 'en'] as ('fr' | 'en')[], default: 'fr' as const }, email: getLightConfig().email }
+    expect(emailNotice({ ...base, email: { ...base.email, notice: undefined } }, 'en')).toBeNull()
+    expect(emailNotice({ ...base, email: { ...base.email, notice: { fr: 'Démo.' } } }, 'en')).toBe('Démo.')
+    expect(emailNotice({ ...base, email: { ...base.email, notice: { fr: 'Démo.', en: 'Demo.' } } }, 'en')).toBe('Demo.')
+    expect(emailNotice({ ...base, email: { ...base.email, notice: { en: 'Demo.' } } }, 'fr')).toBeNull()
   })
 
   it('shows lines without prices when the order has no line prices', () => {
