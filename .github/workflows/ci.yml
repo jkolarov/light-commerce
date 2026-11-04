@@ -61,11 +61,10 @@ jobs:
         run: git diff --exit-code -- src/payload-types.ts
 
   generated:
-    # The committed generated files describe both modules, so this check runs with both on.
+    # The committed generated files describe both modules: generate:check always compares with
+    # both on (scripts/generate-check.mjs).
     name: Generated files are up to date
     runs-on: ubuntu-latest
-    env:
-      LIGHT_CI_MODULES: cms,shop
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6

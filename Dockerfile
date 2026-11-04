@@ -47,6 +47,8 @@ ENV NODE_ENV=production \
     MEDIA_DIR=/app/data/media
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+# Next's standalone output leaves out public/ (the logo from light.config.ts, and later fonts).
+COPY --from=builder --chown=node:node /app/public ./public
 # Database and uploads live on one volume. Created here so a new named volume inherits node's ownership.
 RUN mkdir -p /app/data/media && chown -R node:node /app/data
 VOLUME /app/data
