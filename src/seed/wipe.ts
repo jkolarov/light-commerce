@@ -7,6 +7,10 @@ import type { DemoContent } from './demo'
 // doesn't know (a page, product or photo the demo doesn't have) means this is someone's site: it
 // stops, unless `--force`, which deletes all content first. User accounts are always kept: with no
 // user left, the admin's create-first-user screen would open to anyone.
+//
+// The check looks at the collections the seed writes, media, pages and products, and nothing else:
+// orders, carts and the like from a live demo never stop a rerun (and the seed never touches them).
+// `--force` itself is confirmed on the command line (SEED_CONFIRM_WIPE, see options.ts).
 
 const SHOWN = 5
 
@@ -42,31 +46,47 @@ export async function findForeignContent(ctx: SeedContext, demo: DemoContent): P
 
 /**
  * Deletes every document of every collection except users and Payload's own (`payload-*`:
- * preferences, migrations, locks). Media goes last, with its files. Returns the counts.
+ * preferences, migrations, locks). Media goes last, with its files. First says what it is about to
+ * delete and from which database (`target`). Returns the counts.
  */
-export async function wipeContent(ctx: SeedContext): Promise<Record<string, number>> {
+export async function wipeContent(ctx: SeedContext, target: string): Promise<Record<string, number>> {
   const { payload } = ctx
-  const slugs = payload.config.collections
-    .map((collection) => collection.slug)
+  const collections = payload.config.collections
+    .map((collection) => collection.slug as CollectionSlug)
     .filter((slug) => slug !== 'users' && !slug.startsWith('payload-'))
     .sort((a, b) => Number(a === 'media') - Number(b === 'media'))
+    .map((slug) => ({ slug, trash: Boolean(payload.collections[slug]?.config.trash) }))
+  const list = (counts: Record<string, number>) => Object.entries(counts).map(([slug, n]) => `${n} ${slug}`).join(', ')
+
+  const found: Record<string, number> = {}
+  for (const { slug, trash } of collections) {
+    const { totalDocs } = await payload.count({ collection: slug, overrideAccess: true, ...(trash ? { trash: true } : {}) })
+    if (totalDocs) found[slug] = totalDocs
+  }
+  if (!Object.keys(found).length) {
+    ctx.log(`--force: ${target} has no content to delete. User accounts are kept.`)
+    return {}
+  }
+  ctx.log(`--force: about to delete from ${target}: ${list(found)}. User accounts are kept.`)
+
   const deleted: Record<string, number> = {}
-  for (const slug of slugs) {
-    const collection = slug as CollectionSlug
-    const trash = Boolean(payload.collections[collection]?.config.trash)
+  for (const { slug, trash } of collections) {
+    if (!found[slug]) continue
     const result = await payload.delete({
-      collection,
+      collection: slug,
       where: { id: { exists: true } },
       depth: 0,
       overrideAccess: true,
       ...(trash ? { trash: true } : {}),
     })
-    if (result.errors.length) {
-      throw new Error(`--force: could not delete ${result.errors.length} ${slug}: ${result.errors.map((e) => e.message).join('; ')}`)
-    }
     if (result.docs.length) deleted[slug] = result.docs.length
+    if (result.errors.length) {
+      throw new Error(
+        `--force: could not delete ${result.errors.length} ${slug} (deleted so far: ${list(deleted) || 'nothing'}): ` +
+          result.errors.map((e) => e.message).join('; '),
+      )
+    }
   }
-  const what = Object.entries(deleted).map(([slug, n]) => `${n} ${slug}`)
-  ctx.log(`--force: deleted ${what.length ? what.join(', ') : 'nothing (the database had no content)'}. User accounts are kept.`)
+  ctx.log(`--force: deleted ${list(deleted)}.`)
   return deleted
 }

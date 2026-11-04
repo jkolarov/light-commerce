@@ -14,7 +14,7 @@ try {
   const options = seedOptions(process.argv.slice(2), process.env)
   const payload = await getPayload({ config })
   try {
-    await seedDemo(payload, options)
+    await seedDemo(payload, { ...options, target: options.database })
   } finally {
     await payload.destroy()
   }

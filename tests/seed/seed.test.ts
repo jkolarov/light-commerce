@@ -35,9 +35,11 @@ describe('demo seed', () => {
   let demo: DemoCopy
   let first: SeedSummary
   const lines: string[] = []
-  const owner = { email: 'owner@lesclaies.example', password: 'seed-test-password' }
+  const owner = { email: 'owner@lesclaies.example', password: 'Claies-seed-test-7k2m9' }
+  const target = 'file:/tmp/seed-test.db'
 
-  const seed = (force = false) => seedDemo(payload, { demoDir: demo.dir, owner, force, log: (line) => lines.push(line) })
+  const seed = (force = false, as: { email: string; password?: string } = owner) =>
+    seedDemo(payload, { demoDir: demo.dir, owner: as, force, target, log: (line) => lines.push(line) })
 
   /** Documents in a collection (the trash included); 0 when its module is off. */
   const count = async (collection: 'media' | 'pages' | 'products' | 'users') =>
@@ -305,6 +307,30 @@ describe('demo seed', () => {
       }
     }, 300_000)
 
+    it('finds the owner whatever the case of the email, and leaves their password alone', async () => {
+      lines.length = 0
+      const again = await seed(false, { email: 'Owner@LesClaies.Example', password: 'Rotated-Verveine-42x' })
+      expect(again.owner).toBe('kept')
+      expect(await count('users')).toBe(1)
+      expect(lines.join('\n')).toMatch(/Owner account owner@lesclaies\.example: already there, password not changed/)
+      const login = await payload.login({ collection: 'users', data: owner, overrideAccess: true })
+      expect(login.user?.email).toBe(owner.email)
+    }, 300_000)
+
+    it('needs no password when the owner exists (the nightly reset)', async () => {
+      expect((await seed(false, { email: owner.email })).owner).toBe('kept')
+    }, 300_000)
+
+    it('needs a strong password to create the owner, and writes nothing without one', async () => {
+      const before = { users: await count('users'), media: await count('media') }
+      for (const as of [{ email: 'new-owner@lesclaies.example' }, { email: 'new-owner@lesclaies.example', password: 'short-1' }]) {
+        const error = await seed(false, as).catch((e: unknown) => e)
+        expect(error).toBeInstanceOf(SeedError)
+        expect((error as Error).message).toMatch(/SEED_OWNER_PASSWORD/)
+      }
+      expect({ users: await count('users'), media: await count('media') }).toEqual(before)
+    })
+
     it('refuses a database with content the demo does not have, and names it', async () => {
       const data = readFileSync(path.join(import.meta.dirname, '..', 'fixtures', 'small-300x200.png'))
       await payload.create({
@@ -340,6 +366,8 @@ describe('demo seed', () => {
       }
       lines.length = 0
       const forced = await seed(true)
+      const announced = lines.findIndex((line) => line.startsWith('--force: about to delete'))
+      const ownerLine = lines.findIndex((line) => line.startsWith('Owner account'))
 
       if (modules.shop) {
         for (const collection of ['carts', 'orders'] as const) {
@@ -354,7 +382,22 @@ describe('demo seed', () => {
       if (modules.shop) expect(await count('products')).toBe(6)
       expect(await count('users')).toBe(2)
       expect(forced.wiped?.media).toBeGreaterThan(0)
-      expect(lines.join('\n')).toMatch(/--force: deleted .*media.*user accounts are kept/is)
+      // Says what it is about to delete, and from which database, before deleting anything.
+      expect(lines[announced]).toMatch(/^--force: about to delete from file:\/tmp\/seed-test\.db: .*\d+ media.*User accounts are kept/)
+      expect(lines.slice(announced + 1).join('\n')).toMatch(/--force: deleted .*media/)
+      // The owner is made sure of first, so a wipe that fails halfway still leaves one.
+      expect(ownerLine).toBeGreaterThanOrEqual(0)
+      expect(ownerLine).toBeLessThan(announced)
+    }, 300_000)
+
+    it('makes an existing account with that email an owner, with a warning', async () => {
+      lines.length = 0
+      const promoted = await seed(false, { email: 'staff@lesclaies.example' })
+      expect(promoted.owner).toBe('promoted')
+      expect(lines.join('\n')).toMatch(/Warning: .*staff@lesclaies\.example.*now an owner/)
+      const { docs } = await payload.find({ collection: 'users', where: { email: { equals: 'staff@lesclaies.example' } }, overrideAccess: true })
+      expect(docs[0]?.roles).toContain('owner')
+      expect(await count('users')).toBe(2)
     }, 300_000)
   })
 })

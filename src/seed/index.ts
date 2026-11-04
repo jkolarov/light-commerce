@@ -14,8 +14,11 @@ import { findForeignContent, wipeContent } from './wipe'
 // The demo seed: loads demo/ (shape in demo/README.md) into the site with the Local API, always
 // with `overrideAccess: true` (Payload 4's Local API applies access rules by default).
 //
-// Order: owner, photos, pages (ids first), products, pages in full, menus. Each module's content
-// is loaded only when the module is on. Running it again updates the same documents.
+// Order: check demo/ and the database, owner, then (with `force`) the wipe, photos, pages (ids
+// first), products, pages in full, menus. Each module's content is loaded only when the module is
+// on. Running it again updates the same documents.
+//
+// `force` is taken as given here: the command line asks for its confirmation (options.ts).
 
 export type SeedSummary = {
   owner: 'created' | 'kept' | 'promoted'
@@ -30,7 +33,14 @@ export type SeedSummary = {
 
 export async function seedDemo(
   payload: Payload,
-  opts: { demoDir: string; owner: SeedOwner; force?: boolean; log?: (line: string) => void },
+  opts: {
+    demoDir: string
+    owner: SeedOwner
+    force?: boolean
+    /** The database, as messages name it (DATABASE_URI without its query string). */
+    target?: string
+    log?: (line: string) => void
+  },
 ): Promise<SeedSummary> {
   const ctx = createContext(payload, opts.log ?? ((line) => payload.logger.info(line)))
   const { cms, shop } = ctx.modules
@@ -40,21 +50,20 @@ export async function seedDemo(
   if (!cms) ctx.skipped.push('pages and menus (the CMS is off)')
   if (!shop) ctx.skipped.push('products (the shop is off)')
 
-  let wiped: Record<string, number> | undefined
-  if (opts.force) {
-    wiped = await wipeContent(ctx)
-  } else {
+  if (!opts.force) {
     const foreign = await findForeignContent(ctx, demo)
     if (foreign.length) {
       throw new SeedError(
-        'The database has content that is not part of the demo, so the seed leaves it alone. ' +
+        'The database has pages, products or photos that are not part of the demo, so the seed leaves it alone. ' +
           'To delete all content (user accounts are kept) and load the demo, run: pnpm seed --force',
         foreign,
       )
     }
   }
-
+  // Before the wipe: if the wipe fails halfway, the site still has its owner.
   const owner = await ensureOwner(ctx, opts.owner)
+  const wiped = opts.force ? await wipeContent(ctx, opts.target ?? 'the database') : undefined
+
   await seedMedia(ctx, demo)
   if (cms) await ensurePages(ctx, demo)
   if (shop) await seedProducts(ctx, demo)
