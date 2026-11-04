@@ -7,9 +7,8 @@
 #   docker compose -p lightcommerce -f deploy/demo/compose.yml run --rm -T seed
 #                                  load the demo company (first deploy: creates the owner)
 #
-# The app applies the database migrations when Payload initialises (src/migrations,
-# `prodMigrations`: its first request after a start, before answering it); nothing
-# here pushes the schema. Variables come from deploy/demo/.env (gitignored, see .env.example).
+# The app applies the database migrations as it starts, before it answers, and exits if one fails
+# (src/migrations, `prodMigrations`, src/core/dbStartup.ts); nothing here pushes the schema. Variables come from deploy/demo/.env (gitignored, see .env.example).
 name: lightcommerce
 
 # The image's build. The seed and reset image shares the app's build stage, so it needs the same

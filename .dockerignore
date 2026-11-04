@@ -6,9 +6,20 @@
 node_modules
 .next
 **/node_modules
+# Secrets, wherever they are: a bare `.env` only matches the context root, and `COPY . .` would
+# put deploy/demo/.env (the demo's keys and owner password) into the image.
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
+!**/.env.example
+*.pem
+**/*.pem
+# The demo's hosting files (its .env, logs, scripts): the image needs none of them.
+deploy
+logs
+**/logs
 data/
 *.db
 *.db-*

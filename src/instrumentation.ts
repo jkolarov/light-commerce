@@ -10,7 +10,18 @@ export async function register() {
       const { stopIfStripeIsMissing } = await import('./modules/shop/payments/stripe/startup')
       stopIfStripeIsMissing()
     }
+    // Last: a production server applies pending migrations before it answers, and stops if one
+    // fails (src/core/dbStartup.ts). Not during `next build` or `next dev`.
+    const { preparesDatabaseAtStartup, prepareDatabaseOrStop } = await import('./core/dbStartup')
+    if (preparesDatabaseAtStartup()) await prepareDatabaseOrStop(startPayload)
   }
+}
+
+/** Payload's start: connects to the database and applies pending migrations (`prodMigrations`). */
+async function startPayload() {
+  const { getPayload } = await import('payload')
+  const { default: config } = await import('@payload-config')
+  await getPayload({ config })
 }
 
 /** Whether a module is on. A broken config counts as off: `stopIfConfigIsBroken` has reported it. */
