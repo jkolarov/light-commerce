@@ -3,6 +3,8 @@ import type { Block } from 'payload'
 /** Most products a grid shows; two is the least that still reads as a row. */
 export const MIN_PRODUCTS = 2
 export const MAX_PRODUCTS = 12
+/** How many of the newest products a new grid shows. */
+export const DEFAULT_COUNT = 4
 
 // Products on a CMS page: hand-picked ones, or the newest N. Added to the pages' `layout` by the
 // shop plugin (see `./extendPages.ts`), never by the CMS module.
@@ -32,7 +34,7 @@ export const productGridBlock: Block = {
       type: 'number',
       min: MIN_PRODUCTS,
       max: MAX_PRODUCTS,
-      defaultValue: 4,
+      defaultValue: DEFAULT_COUNT,
       required: true,
       admin: {
         step: 1,

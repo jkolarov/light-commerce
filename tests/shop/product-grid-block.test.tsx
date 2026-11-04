@@ -1,4 +1,4 @@
-import type { Config, Payload } from 'payload'
+import { handleEndpoints, type Config, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { getLightConfig } from '@/config'
@@ -143,7 +143,7 @@ describeWithBoth('productGrid: both modules on', () => {
     expect(out).not.toContain('Nos best-sellers')
   })
 
-  it('leaves out a picked product that is a draft, unpublished, or in the trash', async () => {
+  it('shows only the published products among the picked ones (not drafts, never-published or trashed)', async () => {
     const draftId = await publish('Brouillon')
     await payload.update({ collection: 'products', id: draftId, data: { _status: 'draft' }, draft: true, overrideAccess: true, locale: 'fr' })
     const trashedId = await publish('Corbeille')
@@ -158,6 +158,11 @@ describeWithBoth('productGrid: both modules on', () => {
     expect(out).toContain('Brouillon')
   })
 
+  it('shows a product picked twice once', async () => {
+    const out = await html({ mode: 'selected', products: [ids.Alpha, ids.Alpha, { id: ids.Alpha }] })
+    expect(out.match(/href="\/fr\/shop\/alpha"/g)).toHaveLength(1)
+  })
+
   it('hides a published product once it becomes a draft', async () => {
     const id = await publish('Eclipse')
     expect(await html({ mode: 'selected', products: [id] })).toContain('Eclipse')
@@ -169,6 +174,31 @@ describeWithBoth('productGrid: both modules on', () => {
       overrideAccess: true,
     })
     expect(await html({ mode: 'selected', products: [id] })).toBe('')
+  })
+
+  it('does not leak a newer product draft through anonymous GET /api/pages with depth and draft', async () => {
+    const id = await publish('Publie')
+    await payload.update({
+      collection: 'products',
+      id,
+      data: { title: 'TITRE BROUILLON', _status: 'draft' },
+      draft: true,
+      locale: 'fr',
+      overrideAccess: true,
+    })
+    await payload.create({
+      collection: 'pages',
+      data: { title: 'Leak', slug: 'leak', _status: 'published', layout: [{ blockType: 'productGrid', mode: 'selected', products: [id] }] } as never,
+      locale: 'fr',
+      overrideAccess: true,
+    })
+    for (const query of ['depth=1&draft=true', 'depth=2&draft=true&locale=all']) {
+      const url = new URL(`/api/pages?where[slug][equals]=leak&${query}`, 'http://localhost')
+      const res = await handleEndpoints({ config: payload.config, path: url.pathname, request: new Request(url) })
+      const body = await res.text()
+      expect(body, query).toContain('Publie')
+      expect(body, query).not.toContain('TITRE BROUILLON')
+    }
   })
 
   it('renders nothing when there is nothing to show', async () => {

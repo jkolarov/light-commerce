@@ -4,6 +4,7 @@ import type { Locale } from '@/core/i18n/locales'
 import type { ProductGridBlock } from '@/payload-types'
 
 import type { ProductCardProduct } from '../../components/ProductCard'
+import { DEFAULT_COUNT, MAX_PRODUCTS } from './config'
 
 type ProductWithId = ProductCardProduct & { id: number }
 
@@ -20,7 +21,7 @@ export async function findGridProducts(
   block: Pick<ProductGridBlock, 'mode' | 'count' | 'products'>,
 ): Promise<ProductWithId[]> {
   if (block.mode === 'selected') {
-    const ids = (block.products ?? []).map(idOf)
+    const ids = [...new Set((block.products ?? []).map(idOf))]
     if (ids.length === 0) return []
     const { docs } = await payload.find({
       collection: 'products',
@@ -39,7 +40,7 @@ export async function findGridProducts(
     locale,
     depth: 1,
     sort: '-createdAt',
-    limit: Math.min(Math.max(block.count ?? 4, 1), 12),
+    limit: Math.min(Math.max(block.count ?? DEFAULT_COUNT, 1), MAX_PRODUCTS),
     pagination: false,
     draft: false,
     overrideAccess: false,
