@@ -13,7 +13,8 @@ export function SkipLink() {
       href={`#${MAIN_ID}`}
       className={cx(
         'sr-only rounded-[0.1875rem] bg-primary px-4 py-3 font-semibold text-primary-contrast',
-        'focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50',
+        // `not-sr-only` resets the padding, so it is set again on focus.
+        'focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-3',
         focusRing,
       )}
     >

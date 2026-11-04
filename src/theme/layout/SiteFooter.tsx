@@ -35,15 +35,16 @@ export function SiteFooter({ locale, locales, siteName, logo, contactEmail, nav,
 
   return (
     <footer className="mt-auto bg-surface">
-      <Container className="grid gap-x-12 gap-y-10 py-12 sm:py-16 md:grid-cols-12">
-        <div className="md:col-span-6 lg:col-span-5">
+      {/* Two columns on tablets (the contact under the logo), three from `lg`. */}
+      <Container className="grid gap-x-12 gap-y-10 py-12 sm:py-16 md:grid-cols-2 lg:grid-cols-[5fr_3fr_4fr]">
+        <div>
           <Logo locale={locale} logo={logo} siteName={siteName} className="h-8" />
           {/* A textarea: its line breaks are kept by CSS, and it is only ever text. */}
           {text && <p className="mt-6 max-w-[38ch] leading-[1.6] whitespace-pre-line text-muted">{text}</p>}
         </div>
 
         {nav.length > 0 && (
-          <nav aria-label={navLabel} className="md:col-span-3 lg:col-span-4">
+          <nav aria-label={navLabel}>
             <ul className="space-y-3">
               {nav.map((item) => (
                 <li key={item.href}>
@@ -56,8 +57,8 @@ export function SiteFooter({ locale, locales, siteName, logo, contactEmail, nav,
           </nav>
         )}
 
-        <div className={cx('md:col-span-3', nav.length === 0 && 'md:col-start-10')}>
-          <h2 className="text-[0.9375rem] text-muted">{t('contact')}</h2>
+        <div className={cx(nav.length === 0 && 'lg:col-start-3')}>
+          <h2 className="font-body text-[0.9375rem] text-muted">{t('contact')}</h2>
           <p className="mt-3 break-words">
             <a href={`mailto:${contactEmail}`} className={textLink}>
               {contactEmail}

@@ -18,8 +18,8 @@ export function ErrorView({ retry }: { retry: () => void }) {
   const locale = useLocale()
   const home = isLocale(locale) ? localePath(locale) : '/'
   return (
-    <Container width="narrow" className="py-20 sm:py-28 lg:py-36">
-      <Heading level={1}>{t('error.title')}</Heading>
+    <Container className="py-20 sm:py-28 lg:py-36">
+      <Heading level={1} className="max-w-[18ch]">{t('error.title')}</Heading>
       <p className="mt-6 max-w-[46ch] text-lg leading-[1.55] text-muted sm:text-xl">{t('error.text')}</p>
       <div className="mt-10 flex flex-wrap gap-3">
         <Button onClick={retry}>{t('error.retry')}</Button>
