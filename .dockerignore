@@ -16,6 +16,10 @@ docs
 demo
 tests
 coverage
+# The end-to-end test's config imports from tests/ (left out above), and next build type-checks it.
+playwright.config.ts
+playwright-report
+test-results
 Dockerfile
 .dockerignore
 compose*.yml
