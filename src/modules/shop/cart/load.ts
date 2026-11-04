@@ -6,10 +6,8 @@ import { asMedia, type ImageAttributes, thumbnailAttributes } from '@/theme/medi
 
 import { shopConfig } from '../config'
 import { productPath } from '../products/paths'
-import { productPrice } from '../products/price'
-import { calculateShipping } from '../shipping/calculate'
-import { productIdOf } from './checkItems'
-import { type CartProduct, type LineProblem, lineProblem, MAX_LINE_QUANTITY, priceSelect } from './rules'
+import { type CartItemLike, type CartPricing, priceCart } from './price'
+import { type CartProduct, type LineProblem, MAX_LINE_QUANTITY, priceSelect, productIdOf } from './rules'
 
 // What the public site shows of a guest's cart. The cart is read with its secret, as the guest
 // (`overrideAccess: false`): a wrong secret finds nothing. Its products are read as a visitor
@@ -43,7 +41,7 @@ export type CartView = {
   lines: CartLine[]
   /** How many items, every line's quantity added up. */
   count: number
-  /** Cents: the lines that have a price, at today's stored prices. */
+  /** Cents: the lines that have a price, at today's stored prices (`priceCart`). */
   subtotal: number
   /** Cents, from `calculateShipping` (0 for an empty cart). */
   shipping: number
@@ -72,68 +70,79 @@ export async function findGuestCart(payload: Payload, ref: CartRef): Promise<Car
 
 type ShownProduct = Pick<Product, 'id' | 'title' | 'slug' | 'images'> & CartProduct
 
-/** The cart's products that visitors can read, photos loaded, in the page's language. */
-async function readableProducts(payload: Payload, ids: string[], locale: Locale): Promise<Map<string, ShownProduct>> {
+/** The distinct product ids of a cart's lines. */
+const productIds = (items: readonly CartItemLike[]) => [...new Set(items.map((item) => productIdOf(item.product)).filter((id) => id !== null))]
+
+/**
+ * The cart's products that visitors can read (published, not in the trash), with their price and
+ * live stock, keyed by id. As an anonymous visitor: no `req`, no user. `extra` adds fields to show.
+ */
+async function readableProducts<T extends CartProduct>(
+  payload: Payload,
+  ids: string[],
+  opts: { locale?: Locale; depth?: number; extra?: Partial<Record<'title' | 'slug' | 'images', true>> } = {},
+): Promise<Map<string, T>> {
   if (!ids.length) return new Map()
   const { currency } = shopConfig()
   const { docs } = await payload.find({
     collection: 'products',
     where: { id: { in: ids } },
-    locale,
-    depth: 1,
+    locale: opts.locale,
+    depth: opts.depth ?? 0,
     pagination: false,
     draft: false,
     overrideAccess: false,
-    select: { title: true, slug: true, images: true, inventory: true, ...priceSelect(currency) },
+    select: { inventory: true, ...priceSelect(currency), ...opts.extra },
   })
-  return new Map(docs.map((doc) => [String(doc.id), doc as ShownProduct]))
+  return new Map(docs.map((doc) => [String(doc.id), doc as unknown as T]))
 }
 
-/** The view of a cart the guest holds: lines, totals and whether checkout may start. */
-export async function cartView(payload: Payload, cart: Cart, locale: Locale): Promise<CartView> {
-  const { currency, shipping, displayTaxRate } = shopConfig()
-  const items = (cart.items ?? []).filter((item) => item.id)
-  const ids = [...new Set(items.map((item) => productIdOf(item.product)).filter((id) => id !== null))]
-  const products = await readableProducts(payload, ids, locale)
-  const totals = new Map<string, number>()
-  for (const item of items) {
-    const id = productIdOf(item.product)
-    if (id) totals.set(id, (totals.get(id) ?? 0) + item.quantity)
-  }
+/**
+ * What a cart costs now, for the checkout (S17): its products read as visitors read them, priced
+ * from today's stored prices with `priceCart`, the same rules as the cart page. Charge `total` and
+ * refuse the cart unless `canCheckout`; never `carts.subtotal`. Works on any cart read (`items`
+ * with products as ids or loaded documents).
+ */
+export async function priceGuestCart(payload: Payload, cart: { items?: CartItemLike[] | null }): Promise<CartPricing> {
+  const items = cart.items ?? []
+  return priceCart(items, await readableProducts(payload, productIds(items)), shopConfig())
+}
 
-  const lines = items.map((item): CartLine => {
-    const productId = productIdOf(item.product)
-    const product = productId ? (products.get(productId) ?? null) : null
-    const unitPrice = product ? productPrice(product, currency) : null
+/** The view of a cart the guest holds: lines with name and photo, totals, and whether checkout may start. */
+export async function cartView(payload: Payload, cart: Cart, locale: Locale): Promise<CartView> {
+  const shop = shopConfig()
+  const items = cart.items ?? []
+  const products = await readableProducts<ShownProduct>(payload, productIds(items), {
+    locale,
+    depth: 1,
+    extra: { title: true, slug: true, images: true },
+  })
+  const pricing = priceCart(items, products, shop)
+
+  const lines = pricing.lines.map((priced): CartLine => {
+    const product = priced.productId ? (products.get(priced.productId) ?? null) : null
     const photo = asMedia(product?.images?.[0])
     return {
-      id: item.id!,
-      productId,
+      ...priced,
+      id: priced.id ?? '',
       title: product?.title?.trim() || null,
       href: product?.slug ? productPath(locale, product.slug) : null,
       image: photo ? thumbnailAttributes(photo) : null,
-      unitPrice,
-      quantity: item.quantity,
-      lineTotal: unitPrice === null ? null : unitPrice * item.quantity,
       maxQuantity: product ? Math.min(product.inventory ?? MAX_LINE_QUANTITY, MAX_LINE_QUANTITY) : 0,
-      // A product's lines count together against its stock.
-      problem: lineProblem(product, productId ? totals.get(productId)! : item.quantity, currency),
     }
   })
 
-  const subtotal = lines.reduce((sum, line) => sum + (line.lineTotal ?? 0), 0)
-  const shippingAmount = calculateShipping({ subtotal }, shipping).amount
   return {
     id: String(cart.id),
     lines,
-    count: lines.reduce((sum, line) => sum + line.quantity, 0),
-    subtotal,
-    shipping: shippingAmount,
-    total: subtotal + shippingAmount,
-    currency,
-    taxRate: displayTaxRate,
-    shipsTo: shipping.countries,
-    canCheckout: lines.length > 0 && lines.every((line) => line.problem === null),
+    count: pricing.count,
+    subtotal: pricing.subtotal,
+    shipping: pricing.shipping,
+    total: pricing.total,
+    currency: shop.currency,
+    taxRate: shop.displayTaxRate,
+    shipsTo: shop.shipping.countries,
+    canCheckout: pricing.canCheckout,
   }
 }
 

@@ -62,10 +62,14 @@ export function CartLineItem({ line, locale, currency, compact = false, onRemove
       else setError(result.problem)
     })
 
+  /** The quantity that fixes a line over its limit ("Change to 2"), or `null`. */
+  const keep = problem?.kind === 'notEnoughStock' ? problem.available : problem?.kind === 'tooMany' ? problem.max : null
+
   const notice = (() => {
     if (!problem) return null
     if (problem.kind === 'soldOut') return t('lineSoldOut')
     if (problem.kind === 'unavailable') return t('lineUnavailable')
+    if (problem.kind === 'tooMany') return t('lineTooMany', { max: problem.max })
     return t('lineNotEnough', { count: problem.available })
   })()
 
@@ -105,9 +109,9 @@ export function CartLineItem({ line, locale, currency, compact = false, onRemove
           <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[0.9375rem] text-text">
             {problem?.kind === 'soldOut' && <Badge tone="accent">{shopT('outOfStock')}</Badge>}
             <span>{notice}</span>
-            {problem?.kind === 'notEnoughStock' && (
-              <button type="button" className={quietButton} aria-disabled={pending || undefined} onClick={() => setQuantity(problem.available)}>
-                {t('keep', { count: problem.available })}
+            {keep !== null && (
+              <button type="button" className={quietButton} aria-disabled={pending || undefined} onClick={() => setQuantity(keep)}>
+                {t('keep', { count: keep })}
               </button>
             )}
           </p>

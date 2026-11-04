@@ -6,11 +6,10 @@ import { refresh } from 'next/cache'
 import { createPayloadRequest, getPayload, type Payload } from 'payload'
 import { z } from 'zod'
 
-import { shopConfig } from '../config'
-import { CartItemError } from './checkItems'
+import { CartItemError, type CartProblem } from './checkItems'
 import { readCartRef, saveCartRef } from './cookie'
 import { type CartRef, findGuestCart } from './load'
-import type { LineProblem } from './rules'
+import { cartItemMatcher } from './matcher'
 import { MAX_LINE_QUANTITY } from './rules'
 
 // The cart's Server Actions: what the add-to-cart control, the drawer and the cart page call.
@@ -20,7 +19,7 @@ import { MAX_LINE_QUANTITY } from './rules'
 // After a change the page is drawn again on the server (`refresh`), so the header's count, the
 // drawer and the cart page all show the stored cart.
 
-export type CartActionProblem = LineProblem | { kind: 'badQuantity' } | { kind: 'failed' }
+export type CartActionProblem = CartProblem | { kind: 'failed' }
 export type CartActionResult = { ok: true } | { ok: false; problem: CartActionProblem }
 
 const quantity = z.number().int().min(1).max(MAX_LINE_QUANTITY)
@@ -31,14 +30,19 @@ const removeInput = z.object({ lineId })
 
 const failed: CartActionResult = { ok: false, problem: { kind: 'failed' } }
 
-/** Runs a cart change; a refused one says why, anything else is logged and reported as failed. */
-async function change(payload: Payload, run: () => Promise<boolean>): Promise<CartActionResult> {
+/**
+ * Runs a cart change, the cart lookup included, so nothing reaches the page's error boundary: a
+ * refused change says why, anything else (a database error) is logged and reported as failed.
+ */
+async function change(run: (payload: Payload) => Promise<boolean>): Promise<CartActionResult> {
+  let payload: Payload | undefined
   try {
-    const done = await run()
-    return done ? { ok: true } : failed
+    payload = await getPayload({ config })
+    return (await run(payload)) ? { ok: true } : failed
   } catch (error) {
     if (error instanceof CartItemError) return { ok: false, problem: error.problem }
-    payload.logger.error({ err: error, msg: 'Shop: a cart change failed' })
+    if (payload) payload.logger.error({ err: error, msg: 'Shop: a cart change failed' })
+    else console.error('Shop: a cart change failed', error)
     return failed
   } finally {
     refresh()
@@ -56,22 +60,26 @@ export async function addToCart(input: { productId: number; quantity: number }):
   const parsed = addInput.safeParse(input)
   if (!parsed.success) return { ok: false, problem: { kind: 'badQuantity' } }
   const { productId, quantity } = parsed.data
-  const payload = await getPayload({ config })
-  const ref = await guestCart(payload)
-  return change(payload, async () => {
+  return change(async (payload) => {
+    const ref = await guestCart(payload)
     if (ref) {
       const req = await createPayloadRequest({ payload })
-      const result = await addItem({ payload, cartsSlug: 'carts', cartID: ref.id, item: { product: productId }, quantity, req, secret: ref.secret })
+      const result = await addItem({
+        payload,
+        cartsSlug: 'carts',
+        cartID: ref.id,
+        cartItemMatcher,
+        item: { product: productId },
+        quantity,
+        req,
+        secret: ref.secret,
+      })
       if (result.success) await saveCartRef(ref)
       return result.success
     }
-    // A new guest cart (or the last one was bought): the plugin makes its secret.
-    const cart = await payload.create({
-      collection: 'carts',
-      data: { items: [{ product: productId, quantity }], currency: shopConfig().currency },
-      depth: 0,
-      overrideAccess: false,
-    })
+    // A new guest cart (or the last one was bought): the plugin makes its secret, the shop's
+    // carts hook sets the currency.
+    const cart = await payload.create({ collection: 'carts', data: { items: [{ product: productId, quantity }] }, depth: 0, overrideAccess: false })
     if (!cart.secret) throw new Error('The new cart came back without its secret.')
     await saveCartRef({ id: cart.id, secret: cart.secret })
     return true
@@ -82,10 +90,9 @@ export async function addToCart(input: { productId: number; quantity: number }):
 export async function setLineQuantity(input: { lineId: string; quantity: number }): Promise<CartActionResult> {
   const parsed = changeInput.safeParse(input)
   if (!parsed.success) return { ok: false, problem: { kind: 'badQuantity' } }
-  const payload = await getPayload({ config })
-  const ref = await guestCart(payload)
-  if (!ref) return change(payload, async () => false)
-  return change(payload, async () => {
+  return change(async (payload) => {
+    const ref = await guestCart(payload)
+    if (!ref) return false
     const req = await createPayloadRequest({ payload })
     const result = await updateItem({
       payload,
@@ -105,10 +112,9 @@ export async function setLineQuantity(input: { lineId: string; quantity: number 
 export async function removeLine(input: { lineId: string }): Promise<CartActionResult> {
   const parsed = removeInput.safeParse(input)
   if (!parsed.success) return failed
-  const payload = await getPayload({ config })
-  const ref = await guestCart(payload)
-  if (!ref) return change(payload, async () => false)
-  return change(payload, async () => {
+  return change(async (payload) => {
+    const ref = await guestCart(payload)
+    if (!ref) return false
     const req = await createPayloadRequest({ payload })
     const result = await removeItem({ payload, cartsSlug: 'carts', cartID: ref.id, itemID: parsed.data.lineId, req, secret: ref.secret })
     if (result.success) await saveCartRef(ref)

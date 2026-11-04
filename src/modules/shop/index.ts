@@ -5,6 +5,7 @@ import type { LightConfig, ShopConfig } from '@/config/schema'
 import { anyone, isStaffOrOwner, publishedOrStaff } from '@/core/access'
 
 import { addProductGridToPages } from './blocks/ProductGrid/extendPages'
+import { cartItemMatcher } from './cart/matcher'
 import { addressesOverride } from './collections/Addresses'
 import { cartsOverride } from './collections/Carts'
 import { ordersOverride } from './collections/Orders'
@@ -42,8 +43,8 @@ export const shopPlugin =
       // The plugin's customers are our users (no separate customers collection).
       customers: { slug: 'users' },
       currencies: { supportedCurrencies: [currency], defaultCurrency: currency.code },
-      // Guest carts, reached with the cart's secret.
-      carts: { allowGuestCarts: true, cartsCollectionOverride: cartsOverride },
+      // Guest carts, reached with the cart's secret. The matcher survives lines whose product was deleted.
+      carts: { allowGuestCarts: true, cartItemMatcher, cartsCollectionOverride: cartsOverride },
       addresses: { addressesCollectionOverride: addressesOverride },
       orders: { ordersCollectionOverride: ordersOverride },
       transactions: { transactionsCollectionOverride: transactionsOverride },

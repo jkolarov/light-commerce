@@ -17,7 +17,9 @@ import type { CartRef } from './load'
 //
 // The secret is the ecommerce plugin's: 20 random bytes (160 bits) made when the cart is created.
 // The cookie is a bearer token: anyone holding it holds the cart, nothing more (no account, no
-// order, no address). Cookies can be set only by Server Actions and Route Handlers, so a cart is
+// order, no address). httpOnly hides it from page scripts, not from the visitor: they can copy it
+// and change their own cart over the plugin's REST endpoints. That is why every write goes
+// through `checkCartItems`, and the checkout prices the cart again (`priceGuestCart`). Cookies can be set only by Server Actions and Route Handlers, so a cart is
 // created on the first "add to cart", never by viewing a page.
 
 export const CART_COOKIE = 'lc_cart'

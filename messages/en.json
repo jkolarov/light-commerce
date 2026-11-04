@@ -83,7 +83,10 @@
     "addSoldOut": "This product has just sold out.",
     "addNotEnough": "{count, plural, one {Only one left in stock.} other {Only # left in stock.}}",
     "addUnavailable": "This product is no longer for sale.",
-    "failed": "The cart could not be updated. Try again."
+    "failed": "The cart could not be updated. Try again.",
+    "lineTooMany": "At most {max} of each product: lower the quantity to check out.",
+    "addTooMany": "At most {max} of each product.",
+    "cartFull": "Your cart is full: {max} different products at most."
   },
   "checkout": {
     "title": "Checkout",

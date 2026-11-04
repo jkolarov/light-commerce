@@ -143,6 +143,15 @@ describeWithShop('cart views', () => {
       expect(html).toMatch(/<button type="button"[^>]*disabled=""[^>]*aria-describedby="([^"]+)"[^>]*>Commander<\/button><p id="\1"[^>]*>Corrigez les articles signalés pour passer commande\.<\/p>/)
     })
 
+    it('flags a line over the most one cart may hold of a product', () => {
+      const many = line({ quantity: 120, lineTotal: 120 * 790, maxQuantity: 99, problem: { kind: 'tooMany', max: 99 } })
+      const html = render(<CartPageView cart={cart([many])} locale="fr" />)
+      expect(html).toContain('Au plus 99 par produit : baissez la quantité pour commander.')
+      expect(html).toContain('>Passer à 99</button>')
+      expect(html).toMatch(/aria-label="Augmenter la quantité de Verveine odorante" aria-disabled="true"/)
+      expect(hrefs(html)).not.toContain('/fr/checkout')
+    })
+
     it('shows a line that is no longer for sale without a name or a price, ready to remove', () => {
       const gone = line({ title: null, href: null, image: null, unitPrice: null, lineTotal: null, maxQuantity: 0, problem: { kind: 'unavailable' } })
       const html = render(<CartPageView cart={cart([gone])} locale="fr" />)

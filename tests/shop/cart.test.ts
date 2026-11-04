@@ -1,4 +1,4 @@
-import { handleEndpoints, type Payload } from 'payload'
+import { createPayloadRequest, handleEndpoints, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import type { Cart, Product } from '@/payload-types'
@@ -236,17 +236,34 @@ describeWithShop('guest cart over REST', () => {
       expect(JSON.stringify(res.body)).toMatch(/sold out/i)
     })
 
-    it('counts two lines of one product together', async () => {
+    it('keeps one line per product, even within the stock', async () => {
       const guest = await newGuest()
-      const res = await rest(`/api/carts/${guest.id}?secret=${guest.secret}`, 'PATCH', {
-        items: [{ product: verveine.id, quantity: 3 }, { product: verveine.id, quantity: 3 }],
-      })
-      expect(res.status).toBe(400)
+      for (const quantities of [[3, 3], [2, 2]]) {
+        const res = await rest(`/api/carts/${guest.id}?secret=${guest.secret}`, 'PATCH', {
+          items: quantities.map((quantity) => ({ product: verveine.id, quantity })),
+        })
+        expect(res.status, String(quantities)).toBe(400)
+      }
+      // The same product id as a string is the same product: still one line.
+      expect((await add(guest, tilleul.id, 1)).status).toBe(200)
+      expect((await rest(`/api/carts/${guest.id}/add-item`, 'POST', { item: { product: String(tilleul.id) }, quantity: 1, secret: guest.secret })).status).toBe(200)
+      expect(await quantities(guest)).toEqual([2])
     })
 
-    it('sells a product whose stock is not tracked without a limit', async () => {
+    it('sells a product whose stock is not tracked up to 99 per cart', async () => {
       const guest = await newGuest()
       expect((await add(guest, tilleul.id, 40)).status).toBe(200)
+      expect((await add(guest, tilleul.id, 59)).status).toBe(200)
+      const over = await add(guest, tilleul.id, 1)
+      expect(over.status).toBe(400)
+      expect(JSON.stringify(over.body)).toContain('At most 99')
+      for (const quantity of [100, 1e6, 1e15, 1e308]) {
+        const res = await rest('/api/carts', 'POST', { items: [{ product: tilleul.id, quantity }] })
+        expect(res.status, String(quantity)).toBe(400)
+      }
+      expect(await quantities(guest)).toEqual([99])
+      // Nothing unreadable was stored: every cart can still be listed.
+      await expect(payload.find({ collection: 'carts', depth: 0, pagination: false, overrideAccess: true })).resolves.toBeTruthy()
     })
 
     it('lets a guest lower or remove a line whose product sold out meanwhile, and change the others', async () => {
@@ -297,6 +314,92 @@ describeWithShop('guest cart over REST', () => {
       const cart = await stored(guest)
       expect(cart.items?.map((item) => item.product)).toEqual([tilleul.id])
       expect(cart.subtotal).toBe(2 * 850)
+    })
+
+    it('keeps working once a product in the cart is deleted for good', async () => {
+      const sauge = await publish({ title: 'Sauge fine', inventory: 10 })
+      const guest = await newGuest([
+        { product: sauge.id, quantity: 2 },
+        { product: tilleul.id, quantity: 1 },
+      ])
+      await payload.update({ collection: 'products', id: sauge.id, data: { deletedAt: new Date().toISOString() }, overrideAccess: true })
+      await payload.delete({ collection: 'products', id: sauge.id, trash: true, overrideAccess: true })
+      expect((await stored(guest)).items?.map((item) => item.product)).toEqual([null, tilleul.id])
+      // Adding another product finds no line to merge with in the dead one, and drops it.
+      expect((await add(guest, verveine.id, 1)).status).toBe(200)
+      const cart = await stored(guest)
+      expect(cart.items?.map((item) => [item.product, item.quantity])).toEqual([
+        [tilleul.id, 1],
+        [verveine.id, 1],
+      ])
+      expect(cart.subtotal).toBe(850 + 790)
+    })
+  })
+
+  describe('the cart itself', () => {
+    it("always prices in the shop's currency, whatever the guest sends", async () => {
+      const created = await rest('/api/carts', 'POST', { items: [{ product: tilleul.id, quantity: 2 }], currency: null })
+      expect(created.status).toBe(201)
+      expect(created.body.doc).toMatchObject({ currency: 'EUR', subtotal: 1700 })
+      const guest = { id: created.body.doc!.id, secret: created.body.doc!.secret! }
+      expect((await rest(`/api/carts/${guest.id}?secret=${guest.secret}`, 'PATCH', { currency: null })).status).toBe(200)
+      expect(await stored(guest)).toMatchObject({ currency: 'EUR', subtotal: 1700 })
+      expect((await add(guest, verveine.id, 1)).status).toBe(200)
+      expect(await stored(guest)).toMatchObject({ currency: 'EUR', subtotal: 1700 + 790 })
+    })
+
+    it('holds at most 50 lines', async () => {
+      const many = await Promise.all(Array.from({ length: 51 }, (_, i) => publish({ title: `Article ${i}`, priceInEUR: 100, inventory: null })))
+      const guest = await newGuest(many.slice(0, 50).map((product) => ({ product: product.id, quantity: 1 })))
+      expect(await quantities(guest)).toHaveLength(50)
+      const res = await add(guest, many[50]!.id, 1)
+      expect(res.status).toBe(400)
+      expect(JSON.stringify(res.body)).toContain('at most 50 different products')
+      // Changing a line of a full cart still works.
+      expect((await update(guest, (await stored(guest)).items![0]!.id!, 3)).status).toBe(200)
+      // A huge write is refused before anything is read.
+      const started = Date.now()
+      const huge = await rest('/api/carts', 'POST', { items: Array.from({ length: 3000 }, () => ({ product: tilleul.id, quantity: 1 })) })
+      expect(huge.status).toBe(400)
+      expect(Date.now() - started).toBeLessThan(1000)
+    })
+
+    it('refuses a line with a variant (the shop sells none)', async () => {
+      const guest = await newGuest()
+      const res = await rest(`/api/carts/${guest.id}/add-item`, 'POST', { item: { product: tilleul.id, variant: 1 }, quantity: 1, secret: guest.secret })
+      expect(res.status).toBe(400)
+      expect(JSON.stringify(res.body)).toContain('no variants')
+    })
+  })
+
+  describe('when an order is confirmed', () => {
+    // The plugin's own cart write once a payment is confirmed (`confirmOrder`, inside the
+    // settlement): `purchasedAt`, with every line as it is. It must never throw.
+    const settle = async (id: number) =>
+      payload.update({ id, collection: 'carts', data: { purchasedAt: new Date().toISOString() }, overrideAccess: true, req: await createPayloadRequest({ payload }) })
+
+    it('goes through whatever happened to the cart since it was filled', async () => {
+      const kinds = ['trashed', 'deleted', 'priceOff', 'unpublished', 'soldOut', 'stockLow', 'atLimit', 'fullCart', 'currencyNull'] as const
+      for (const kind of kinds) {
+        const product = await publish({ title: `Réglé ${kind}`, inventory: kind === 'atLimit' ? null : 10 })
+        const lines = kind === 'fullCart'
+          ? await Promise.all(Array.from({ length: 50 }, (_, i) => publish({ title: `Plein ${i}`, priceInEUR: 100, inventory: null })))
+          : [product]
+        const guest = await newGuest(lines.map((p) => ({ product: p.id, quantity: kind === 'atLimit' ? 99 : 3 })))
+        const id = product.id
+        if (kind === 'trashed') await payload.update({ collection: 'products', id, data: { deletedAt: new Date().toISOString() }, overrideAccess: true })
+        if (kind === 'deleted') await payload.delete({ collection: 'products', id, overrideAccess: true })
+        if (kind === 'priceOff') await payload.update({ collection: 'products', id, data: { priceInEUREnabled: false }, overrideAccess: true })
+        if (kind === 'unpublished') await payload.update({ collection: 'products', id, data: { _status: 'draft' }, overrideAccess: true })
+        if (kind === 'soldOut') await setStock(id, 0)
+        if (kind === 'stockLow') await setStock(id, 1)
+        if (kind === 'currencyNull') await payload.db.updateOne({ collection: 'carts', id: guest.id, data: { currency: null, subtotal: null } })
+
+        const settled = await settle(guest.id)
+        expect(settled.purchasedAt, kind).toEqual(expect.any(String))
+        expect(settled.currency, kind).toBe('EUR')
+        expect(Number.isFinite(settled.subtotal), kind).toBe(true)
+      }
     })
   })
 })

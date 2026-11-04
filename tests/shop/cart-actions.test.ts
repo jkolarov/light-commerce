@@ -192,6 +192,58 @@ describeWithShop('cart actions and view', () => {
       expect([shown.lines, shown.count, shown.subtotal, shown.shipping, shown.canCheckout]).toEqual([[], 0, 0, 0, false])
     })
   })
+
+  it('keeps adding once a product in the cart was deleted for good', async () => {
+    const sauge = await publish({ title: 'Sauge', inventory: 6 })
+    await actions.addToCart({ productId: sauge.id, quantity: 1 })
+    await actions.addToCart({ productId: tilleul.id, quantity: 1 })
+    await payload.delete({ collection: 'products', id: sauge.id, overrideAccess: true })
+    expect((await view())!.lines.map((line) => [line.productId, line.problem])).toEqual([
+      [null, { kind: 'unavailable' }],
+      [String(tilleul.id), null],
+    ])
+    expect(await actions.addToCart({ productId: verveine.id, quantity: 1 })).toEqual({ ok: true })
+    expect((await view())!.lines.map((line) => line.productId)).toEqual([String(tilleul.id), String(verveine.id)])
+  })
+
+  it('says when a product is at its limit', async () => {
+    await actions.addToCart({ productId: tilleul.id, quantity: 99 })
+    expect(await actions.addToCart({ productId: tilleul.id, quantity: 1 })).toEqual({ ok: false, problem: { kind: 'tooMany', max: 99 } })
+  })
+
+  describe('priceGuestCart (what the checkout charges)', () => {
+    it('prices from current prices and shipping, never from the stored subtotal', async () => {
+      const menthe = await publish({ title: 'Menthe poivrée', slug: 'menthe-poivree', priceInEUR: 690, inventory: 20 })
+      await actions.addToCart({ productId: menthe.id, quantity: 2 })
+      await actions.addToCart({ productId: tilleul.id, quantity: 1 })
+      const id = ref()!.id
+      await payload.update({ collection: 'products', id: menthe.id, data: { priceInEUR: 990 }, overrideAccess: true })
+      // A broken stored subtotal changes nothing either.
+      await payload.db.updateOne({ collection: 'carts', id, data: { subtotal: null, currency: null } })
+      const stored = await payload.findByID({ collection: 'carts', id, depth: 2, overrideAccess: true })
+      const pricing = await cart.priceGuestCart(payload, stored)
+      expect([pricing.subtotal, pricing.shipping, pricing.total, pricing.canCheckout]).toEqual([2 * 990 + 850, 490, 2 * 990 + 850 + 490, true])
+      // The same as the cart page shows.
+      const shown = (await view())!
+      expect([shown.subtotal, shown.shipping, shown.total, shown.canCheckout]).toEqual([pricing.subtotal, pricing.shipping, pricing.total, true])
+    })
+
+    it('refuses what the cart page flags: a price switched off, too few left, an unpublished product', async () => {
+      const mauve = await publish({ title: 'Mauve sylvestre', slug: 'mauve-sylvestre', priceInEUR: 950, inventory: 5 })
+      await actions.addToCart({ productId: mauve.id, quantity: 2 })
+      const stored = async () => payload.findByID({ collection: 'carts', id: ref()!.id, depth: 0, overrideAccess: true })
+      await payload.update({ collection: 'products', id: mauve.id, data: { priceInEUREnabled: false }, overrideAccess: true })
+      let pricing = await cart.priceGuestCart(payload, await stored())
+      expect([pricing.lines[0]!.problem, pricing.subtotal, pricing.canCheckout]).toEqual([{ kind: 'unavailable' }, 0, false])
+      await payload.update({ collection: 'products', id: mauve.id, data: { priceInEUREnabled: true, inventory: 1 }, overrideAccess: true })
+      pricing = await cart.priceGuestCart(payload, await stored())
+      expect([pricing.lines[0]!.problem, pricing.canCheckout]).toEqual([{ kind: 'notEnoughStock', available: 1 }, false])
+      await payload.update({ collection: 'products', id: mauve.id, data: { inventory: 5, _status: 'draft' }, overrideAccess: true })
+      pricing = await cart.priceGuestCart(payload, await stored())
+      expect([pricing.lines[0]!.problem, pricing.canCheckout]).toEqual([{ kind: 'unavailable' }, false])
+      expect((await cart.priceGuestCart(payload, { items: [] })).canCheckout).toBe(false)
+    })
+  })
 })
 
 describeWithShop('cart cookie', () => {

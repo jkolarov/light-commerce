@@ -4,11 +4,14 @@ import type { ProductsSelect } from '@/payload-types'
 import { productPrice, type PriceFields } from '../products/price'
 
 // What may be in a cart, as plain rules. The carts collection enforces them on every write
-// (`checkCartItems`), and the cart view uses them to flag lines that went wrong after they were
-// added (`lineProblem`), so the two always agree.
+// (`checkCartItems`), and the cart view and the checkout use them to flag lines that went wrong
+// after they were added (`lineProblem`, through `priceCart`), so all three always agree.
 
-/** The most of one product a cart line offers, when the stock does not set a lower limit. */
+/** The most of one product a cart may hold, whatever the stock. */
 export const MAX_LINE_QUANTITY = 99
+
+/** The most lines (different products) a cart may hold. */
+export const MAX_CART_LINES = 50
 
 /** A product as the cart sees it: what a visitor may read of it. */
 export type CartProduct = PriceFields & { id: number | string; inventory?: number | null }
@@ -18,8 +21,13 @@ export type CartProduct = PriceFields & { id: number | string; inventory?: numbe
  * - `unavailable`: the product is no longer for sale (unpublished, in the trash, deleted, no price)
  * - `soldOut`: none left
  * - `notEnoughStock`: fewer left than the line asks for (`available` of them)
+ * - `tooMany`: more than `MAX_LINE_QUANTITY` of one product (`max`)
  */
-export type LineProblem = { kind: 'unavailable' } | { kind: 'soldOut' } | { kind: 'notEnoughStock'; available: number }
+export type LineProblem =
+  | { kind: 'unavailable' }
+  | { kind: 'soldOut' }
+  | { kind: 'notEnoughStock'; available: number }
+  | { kind: 'tooMany'; max: number }
 
 type Currency = ShopConfig['currency']
 
@@ -30,17 +38,23 @@ export const priceSelect = (currency: Currency) =>
 /** A whole number of at least 1. */
 export const isQuantity = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 1
 
+/** A relationship's id as a string ("12"), whether it came as an id or a loaded document; `null` when empty. */
+export function productIdOf(value: unknown): string | null {
+  const id = value && typeof value === 'object' ? (value as { id?: unknown }).id : value
+  return typeof id === 'number' || (typeof id === 'string' && id !== '') ? String(id) : null
+}
+
 /**
  * What stops `quantity` of `product` from being bought, or `null` when nothing does. `product` is
  * `null` when visitors can't read it (unpublished, in the trash, deleted). Stock is
- * `products.inventory`; empty means it is not tracked, and the product sells without a limit.
+ * `products.inventory`; empty means it is not tracked, and only `MAX_LINE_QUANTITY` limits it.
  */
 export function lineProblem(product: CartProduct | null, quantity: number, currency: Currency = 'EUR'): LineProblem | null {
   if (!product || productPrice(product, currency) === null) return { kind: 'unavailable' }
   const stock = product.inventory
-  if (stock == null) return null
-  if (stock <= 0) return { kind: 'soldOut' }
-  return quantity > stock ? { kind: 'notEnoughStock', available: stock } : null
+  if (stock != null && stock <= 0) return { kind: 'soldOut' }
+  if (stock != null && stock < MAX_LINE_QUANTITY && quantity > stock) return { kind: 'notEnoughStock', available: stock }
+  return quantity > MAX_LINE_QUANTITY ? { kind: 'tooMany', max: MAX_LINE_QUANTITY } : null
 }
 
 /** How many more of `product` fit in a cart that holds `inCart` of it: up to the stock, and never past `MAX_LINE_QUANTITY`. */

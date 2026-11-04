@@ -13,6 +13,10 @@ export function useCartProblemMessage(): (problem: CartActionProblem) => string 
         return t('addNotEnough', { count: problem.available })
       case 'unavailable':
         return t('addUnavailable')
+      case 'tooMany':
+        return t('addTooMany', { max: problem.max })
+      case 'tooManyLines':
+        return t('cartFull', { max: problem.max })
       default:
         return t('failed')
     }
