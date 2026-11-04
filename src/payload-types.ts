@@ -341,7 +341,7 @@ export interface Page {
    * The address of the page. Made from the title when left empty.
    */
   slug?: string | null;
-  layout?: (HeroBlock | RichTextBlock | ImageTextBlock | CallToActionBlock)[] | null;
+  layout?: (HeroBlock | RichTextBlock | ImageTextBlock | CallToActionBlock | ProductGridBlock)[] | null;
   meta?: {
     title?: string | null;
     description?: string | null;
@@ -456,6 +456,67 @@ export interface CallToActionBlock {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ProductGridBlock".
+ */
+export interface ProductGridBlock {
+  /**
+   * Optional. For example "Our best sellers".
+   */
+  heading?: string | null;
+  mode: 'latest' | 'selected';
+  /**
+   * How many of the newest products to show (2 to 12).
+   */
+  count?: number | null;
+  /**
+   * Shown in this order. Products that are not published are left out.
+   */
+  products?: (number | Product)[] | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'productGrid';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "products".
+ */
+export interface Product {
+  id: number;
+  title?: string | null;
+  slug: string;
+  /**
+   * One short line for product cards, for example "Bright and lemony, whole leaves".
+   */
+  summary?: string | null;
+  description?: LexicalRichText<LexicalNodes_386AE3E3> | null;
+  /**
+   * The first photo is the main one; the others form the gallery.
+   */
+  images?: (number | Media)[] | null;
+  /**
+   * Short facts shown on the product page, in this order (plant, harvest, net weight…).
+   */
+  facts?:
+    | {
+        label?: string | null;
+        value?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Units in stock now. Sales take from it. A new number applies at once, even on "Save draft".
+   */
+  inventory?: number | null;
+  priceInEUREnabled?: boolean | null;
+  priceInEUR?: number | null;
+  loadedInventory?: number | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "addresses".
  */
 export interface Address {
@@ -514,45 +575,6 @@ export interface Address {
   phone?: string | null;
   updatedAt: string;
   createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "products".
- */
-export interface Product {
-  id: number;
-  title?: string | null;
-  slug: string;
-  /**
-   * One short line for product cards, for example "Bright and lemony, whole leaves".
-   */
-  summary?: string | null;
-  description?: LexicalRichText<LexicalNodes_386AE3E3> | null;
-  /**
-   * The first photo is the main one; the others form the gallery.
-   */
-  images?: (number | Media)[] | null;
-  /**
-   * Short facts shown on the product page, in this order (plant, harvest, net weight…).
-   */
-  facts?:
-    | {
-        label?: string | null;
-        value?: string | null;
-        id?: string | null;
-      }[]
-    | null;
-  /**
-   * Units in stock now. Sales take from it. A new number applies at once, even on "Save draft".
-   */
-  inventory?: number | null;
-  priceInEUREnabled?: boolean | null;
-  priceInEUR?: number | null;
-  loadedInventory?: number | null;
-  updatedAt: string;
-  createdAt: string;
-  deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -891,6 +913,7 @@ export interface PagesSelect<T extends boolean = true> {
         richText?: T | RichTextBlockSelect<T>;
         imageText?: T | ImageTextBlockSelect<T>;
         callToAction?: T | CallToActionBlockSelect<T>;
+        productGrid?: T | ProductGridBlockSelect<T>;
       };
   meta?:
     | T
@@ -961,6 +984,18 @@ export interface CallToActionBlockSelect<T extends boolean = true> {
         page?: T;
         url?: T;
       };
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ProductGridBlock_select".
+ */
+export interface ProductGridBlockSelect<T extends boolean = true> {
+  heading?: T;
+  mode?: T;
+  count?: T;
+  products?: T;
   id?: T;
   blockName?: T;
 }

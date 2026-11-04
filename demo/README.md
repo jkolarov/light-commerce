@@ -226,7 +226,13 @@ Added by the shop module (S20). With the shop switched off, S23 skips these bloc
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `heading` | L | no | plain text |
-| `products` | string[] | yes | product slugs, in display order; at least one. There is no "all products" mode: the catalogue page lists every slug |
+| `mode` | `"latest"` or `"selected"` | yes | default `latest`. `selected` shows the picked products, `latest` the newest ones |
+| `count` | integer, 2 to 12 | for `latest` | default 4. How many of the newest products to show |
+| `products` | product ids (relationship) | for `selected` | 1 to 12, in display order. Ids, not slugs |
+
+The seed keeps product slugs in `content/` and maps them to the created products' ids, then sets `mode: "selected"`. For a page that shows every product, use `mode: "latest"` with `count: 12`.
+
+The example below is how `content/pages.json` writes the block today (slugs, no `mode`); the seed turns it into the table above.
 
 ```json
 {

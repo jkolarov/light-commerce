@@ -4,6 +4,7 @@ import type { Plugin } from 'payload'
 import type { LightConfig, ShopConfig } from '@/config/schema'
 import { anyone, isStaffOrOwner, publishedOrStaff } from '@/core/access'
 
+import { addProductGridToPages } from './blocks/ProductGrid/extendPages'
 import { addressesOverride } from './collections/Addresses'
 import { cartsOverride } from './collections/Carts'
 import { ordersOverride } from './collections/Orders'
@@ -24,6 +25,7 @@ export const shopPlugin =
       throw new Error('The shop module is on but light.config.ts has no `shop` section.')
     }
     const currency = currencies[config.shop.currency]
+    // The shop's block for CMS pages, when the CMS is on (found in the config, never imported).
     return ecommercePlugin({
       access: {
         // "Admin" in the plugin means our staff and owners: they manage products and orders.
@@ -48,5 +50,5 @@ export const shopPlugin =
       // Variants are off: they add three collections and the plugin skips their stock check.
       products: { variants: false, productsCollectionOverride: productsOverride },
       // No payment method yet: S17 adds the Stripe adapter from src/modules/shop/payments/stripe/.
-    })(incomingConfig)
+    })(addProductGridToPages(incomingConfig))
   }
