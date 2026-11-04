@@ -4,22 +4,22 @@ import path from 'node:path'
 
 import type { Payload } from 'payload'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, expect, it } from 'vitest'
 
-import { getLightConfig } from '@/config'
 import type { Locale } from '@/core/i18n/locales'
 import { cmsBlockComponents } from '@/modules/cms/blocks/components'
 import { RenderBlocks } from '@/modules/cms/components/RenderBlocks'
 import { lookupPage } from '@/modules/cms/pages/resolve'
 import type { Media, Page } from '@/payload-types'
 
+import { describeWithCms } from '../support/modules'
 import { startPayload, type TestPayload } from '../support/payload'
 import { heading, pageLink, paragraph, richText, text, urlLink } from './blocks.fixtures'
 
 // The four CMS blocks on a real page: stored and read through the Local API, then rendered the
 // way the page route renders them.
 
-describe.skipIf(!getLightConfig().modules.cms)('CMS blocks on pages', () => {
+describeWithCms('CMS blocks on pages', () => {
   let app: TestPayload
   let payload: Payload
   let mediaDir: string

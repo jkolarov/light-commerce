@@ -1,7 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
-import { getLightConfig } from '@/config'
 import { cmsBlocks } from '@/modules/cms/blocks'
 import { CallToAction } from '@/modules/cms/blocks/CallToAction/Component'
 import { cmsBlockComponents } from '@/modules/cms/blocks/components'
@@ -11,6 +10,7 @@ import { RichText } from '@/modules/cms/blocks/RichText/Component'
 import { imageSources } from '@/modules/cms/blocks/shared/media'
 import type { CallToActionBlock, HeroBlock, ImageTextBlock, RichTextBlock } from '@/payload-types'
 
+import { describeWithCms } from '../support/modules'
 import {
   BOLD,
   draftPage,
@@ -33,7 +33,7 @@ import {
 
 const count = (html: string, pattern: RegExp) => html.match(new RegExp(pattern, 'g'))?.length ?? 0
 
-describe.skipIf(!getLightConfig().modules.cms)('CMS block components', () => {
+describeWithCms('CMS block components', () => {
   it('has a component for every block config, and nothing else', () => {
     expect(Object.keys(cmsBlockComponents).sort()).toEqual(cmsBlocks.map((block) => block.slug).sort())
   })
