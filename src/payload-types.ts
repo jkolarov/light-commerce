@@ -62,6 +62,21 @@ export type SupportedTimezones =
   | 'Pacific/Fiji';
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "LexicalNodes_7C878DF2".
+ */
+export type LexicalNodes_7C878DF2 =
+  | SerializedTextNode
+  | SerializedTabNode
+  | SerializedLineBreakNode
+  | SerializedParagraphNode<LexicalNodes_7C878DF2>
+  | SerializedAutoLinkNode<LexicalNodes_7C878DF2, LexicalLinkFields>
+  | SerializedLinkNode<LexicalNodes_7C878DF2, LexicalLinkFields>
+  | SerializedQuoteNode<LexicalNodes_7C878DF2>
+  | SerializedListNode<LexicalNodes_7C878DF2>
+  | SerializedListItemNode<LexicalNodes_7C878DF2>
+  | SerializedHeadingNode<LexicalNodes_7C878DF2, 'h2' | 'h3' | 'h4'>;
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "LexicalNodes_3DE324E4".
  */
 export type LexicalNodes_3DE324E4 =
@@ -268,7 +283,7 @@ export interface Page {
    * The address of the page. Made from the title when left empty.
    */
   slug?: string | null;
-  layout?: unknown[] | null;
+  layout?: (HeroBlock | RichTextBlock | ImageTextBlock | CallToActionBlock)[] | null;
   meta?: {
     title?: string | null;
     description?: string | null;
@@ -288,6 +303,98 @@ export interface Page {
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "HeroBlock".
+ */
+export interface HeroBlock {
+  /**
+   * The title of the page, as visitors see it. One sentence at most.
+   */
+  heading?: string | null;
+  /**
+   * Optional. One or two sentences under the title.
+   */
+  text?: string | null;
+  /**
+   * A wide photo (landscape, 16:10 works best).
+   */
+  image: number | Media;
+  /**
+   * Optional. Leave the label and the page empty for no button.
+   */
+  link?: {
+    type?: ('page' | 'url') | null;
+    label?: string | null;
+    page?: (number | null) | Page;
+    /**
+     * A path on this site (for example /fr/shop/tisane) or a full https:// address.
+     */
+    url?: string | null;
+  };
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'hero';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "RichTextBlock".
+ */
+export interface RichTextBlock {
+  content?: LexicalRichText<LexicalNodes_7C878DF2> | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'richText';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ImageTextBlock".
+ */
+export interface ImageTextBlock {
+  /**
+   * Optional.
+   */
+  heading?: string | null;
+  content?: LexicalRichText<LexicalNodes_7C878DF2> | null;
+  /**
+   * A portrait photo (4:5 works best).
+   */
+  image: number | Media;
+  /**
+   * Side of the photo on wide screens.
+   */
+  imagePosition: 'left' | 'right';
+  /**
+   * Optional. A short line under the photo: a place, a date.
+   */
+  caption?: string | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'imageText';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "CallToActionBlock".
+ */
+export interface CallToActionBlock {
+  heading?: string | null;
+  /**
+   * Optional. One sentence.
+   */
+  text?: string | null;
+  link?: {
+    type?: ('page' | 'url') | null;
+    label?: string | null;
+    page?: (number | null) | Page;
+    /**
+     * A path on this site (for example /fr/shop/tisane) or a full https:// address.
+     */
+    url?: string | null;
+  };
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'callToAction';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -506,7 +613,14 @@ export interface MediaSelect<T extends boolean = true> {
 export interface PagesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
-  layout?: T | {};
+  layout?:
+    | T
+    | {
+        hero?: T | HeroBlockSelect<T>;
+        richText?: T | RichTextBlockSelect<T>;
+        imageText?: T | ImageTextBlockSelect<T>;
+        callToAction?: T | CallToActionBlockSelect<T>;
+      };
   meta?:
     | T
     | {
@@ -519,6 +633,65 @@ export interface PagesSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "HeroBlock_select".
+ */
+export interface HeroBlockSelect<T extends boolean = true> {
+  heading?: T;
+  text?: T;
+  image?: T;
+  link?:
+    | T
+    | {
+        type?: T;
+        label?: T;
+        page?: T;
+        url?: T;
+      };
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "RichTextBlock_select".
+ */
+export interface RichTextBlockSelect<T extends boolean = true> {
+  content?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ImageTextBlock_select".
+ */
+export interface ImageTextBlockSelect<T extends boolean = true> {
+  heading?: T;
+  content?: T;
+  image?: T;
+  imagePosition?: T;
+  caption?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "CallToActionBlock_select".
+ */
+export interface CallToActionBlockSelect<T extends boolean = true> {
+  heading?: T;
+  text?: T;
+  link?:
+    | T
+    | {
+        type?: T;
+        label?: T;
+        page?: T;
+        url?: T;
+      };
+  id?: T;
+  blockName?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -814,6 +987,30 @@ export interface SerializedParagraphNode<TChildren> extends SerializedLexicalEle
   type: 'paragraph';
   textFormat: number;
   textStyle: string;
+}
+
+export interface LexicalLinkFields {
+  [k: string]: unknown;
+  doc?: {
+    relationTo: string;
+    value: Config['db']['defaultIDType'] | { [k: string]: unknown; id: Config['db']['defaultIDType'] };
+  } | null;
+  linkType: 'custom' | 'internal';
+  newTab: boolean;
+  url?: string;
+}
+export interface SerializedLinkNode<TChildren, TFields = LexicalLinkFields> extends SerializedLexicalElementBase<TChildren> {
+  type: 'link';
+  fields: TFields;
+  id?: string;
+}
+export interface SerializedAutoLinkNode<TChildren, TFields = LexicalLinkFields> extends SerializedLexicalElementBase<TChildren> {
+  type: 'autolink';
+  fields: TFields;
+}
+
+export interface SerializedQuoteNode<TChildren> extends SerializedLexicalElementBase<TChildren> {
+  type: 'quote';
 }
 
 export interface SerializedListNode<TChildren> extends SerializedLexicalElementBase<TChildren> {
