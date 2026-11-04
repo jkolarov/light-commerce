@@ -20,5 +20,5 @@ import { sendOrderEmails } from '../emails/send'
  * (`orders.confirmationEmailSentAt`) before sending, so they go out once, and never throws.
  */
 export async function onOrderFinalized(payload: Payload, order: Order): Promise<void> {
-  await afterResponse(() => sendOrderEmails(payload, order.id))
+  await afterResponse(() => sendOrderEmails(payload, order.id), payload.logger)
 }
