@@ -32,7 +32,7 @@ Node.js 24 (24.22.1+) and pnpm 12 (`packageManager` in `package.json`). First co
 - `pnpm dev`: dev server on port 3000 (`pnpm dev -p <port>` for another). It pushes the schema to the SQLite file in `DATABASE_URI` (default `file:./data/light.db`) and regenerates `src/payload-types.ts`.
 - `pnpm build`: production build (`payload build`: import map, types, then `next build`) into `.next/standalone`. No Payload queries at build time: the build runs against an empty database.
 - `pnpm start`: serves the build (Next warns that standalone output is meant for `node .next/standalone/server.js`, which is what Docker runs).
-- `pnpm typecheck`, `pnpm lint`, `pnpm test`: TypeScript, ESLint, vitest. Unit tests are `*.test.ts(x)` in `tests/` or next to the code.
+- `pnpm typecheck`, `pnpm lint`, `pnpm test`: TypeScript, ESLint, vitest. Unit tests are `*.test.ts(x)` in `tests/` or next to the code. A test that needs Payload boots it with `startPayload()` from `tests/support/payload.ts` (fresh temp SQLite file). ESLint fails on imports between `cms` and `shop`, and from core into a module.
 - `pnpm generate`: regenerate `src/payload-types.ts` and `src/app/(payload)/admin/importMap.js`. Run it after changing collections, fields or admin components, and commit the result.
 - `pnpm generate:check`: fails if those two files are stale. It never changes your tree.
 - `pnpm payload <command>`: the Payload CLI (`pnpm payload --help`).
