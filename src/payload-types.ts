@@ -103,8 +103,14 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('fr' | 'en') | ('fr' | 'en')[];
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    header: Header;
+    footer: Footer;
+  };
+  globalsSelect: {
+    header: HeaderSelect<false> | HeaderSelect<true>;
+    footer: FooterSelect<false> | FooterSelect<true>;
+  };
   locale: 'fr' | 'en';
   widgets: {
     welcome: WelcomeWidget;
@@ -569,6 +575,124 @@ export interface PayloadLlmInstructionsSelect<T extends boolean = true> {
   updatedBy?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "header".
+ */
+export interface Header {
+  id: number;
+  /**
+   * Up to 7 links, shown in this order.
+   */
+  items?:
+    | {
+        link?: {
+          type?: ('page' | 'url') | null;
+          label?: string | null;
+          page?: (number | null) | Page;
+          /**
+           * A path on this site (for example /fr/shop/tisane) or a full https:// address.
+           */
+          url?: string | null;
+        };
+        id?: string | null;
+      }[]
+    | null;
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "footer".
+ */
+export interface Footer {
+  id: number;
+  /**
+   * Optional short text under the links.
+   */
+  text?: string | null;
+  items?:
+    | {
+        link?: {
+          type?: ('page' | 'url') | null;
+          label?: string | null;
+          page?: (number | null) | Page;
+          /**
+           * A path on this site (for example /fr/shop/tisane) or a full https:// address.
+           */
+          url?: string | null;
+        };
+        id?: string | null;
+      }[]
+    | null;
+  createdBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedBy?: {
+    relationTo: 'users';
+    value: number | User;
+  } | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "header_select".
+ */
+export interface HeaderSelect<T extends boolean = true> {
+  items?:
+    | T
+    | {
+        link?:
+          | T
+          | {
+              type?: T;
+              label?: T;
+              page?: T;
+              url?: T;
+            };
+        id?: T;
+      };
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "footer_select".
+ */
+export interface FooterSelect<T extends boolean = true> {
+  text?: T;
+  items?:
+    | T
+    | {
+        link?:
+          | T
+          | {
+              type?: T;
+              label?: T;
+              page?: T;
+              url?: T;
+            };
+        id?: T;
+      };
+  createdBy?: T;
+  updatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
