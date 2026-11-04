@@ -20,6 +20,7 @@
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
     "generate:check": "node scripts/generate-check.mjs",
     "email:test": "cross-env NODE_OPTIONS=--no-deprecation payload run scripts/email-test.ts",
+    "seed": "cross-env NODE_OPTIONS=--no-deprecation payload run src/seed/cli.ts",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload"
   },
   "dependencies": {
