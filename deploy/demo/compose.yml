@@ -1,0 +1,74 @@
+# The DEMO instance at https://lightcommerce.fluxory.dev: app, Mailpit and a Cloudflare tunnel,
+# in compose project `lightcommerce` (own containers, volume and network). Run it next to other
+# stacks on the same host. Host ports are loopback only; the public entry is the tunnel.
+#
+#   deploy/demo/deploy.sh                      rebuild from the checked-out branch and restart
+#   docker compose -p lightcommerce -f deploy/demo/compose.yml --profile tools run --rm schema
+#                                              one-off schema push for an empty database (until S26)
+#
+# Variables come from deploy/demo/.env (gitignored, see .env.example).
+name: lightcommerce
+
+services:
+  app:
+    build:
+      context: ../..
+      target: runner
+      args:
+        NEXT_PUBLIC_SERVER_URL: https://lightcommerce.fluxory.dev
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+    image: lightcommerce-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_PORT:-3120}:3000"
+    environment:
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:?set PAYLOAD_SECRET in deploy/demo/.env}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOKS_SIGNING_SECRET: ${STRIPE_WEBHOOKS_SIGNING_SECRET:-}
+    volumes:
+      - data:/app/data
+    depends_on:
+      mailpit:
+        condition: service_healthy
+
+  # Catches every email the demo sends: nothing leaves the machine. Its UI is on loopback only
+  # and is never routed through the tunnel.
+  mailpit:
+    image: axllent/mailpit:v1.30
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1120}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8120}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Dedicated remotely-managed tunnel (created by cloudflare-tunnel.py). Ingress is set at
+  # Cloudflare: lightcommerce.fluxory.dev -> http://app:3000, everything else 404.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in deploy/demo/.env}
+    depends_on:
+      - app
+
+  # One-off, not started by `up`: gives an empty database its schema (see README).
+  schema:
+    profiles: [tools]
+    build:
+      context: ../..
+      target: schema
+    image: lightcommerce-schema
+    environment:
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:?set PAYLOAD_SECRET in deploy/demo/.env}
+    volumes:
+      - data:/app/data
+
+volumes:
+  data:
