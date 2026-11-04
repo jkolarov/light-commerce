@@ -3,10 +3,13 @@ import { randomBytes } from 'node:crypto'
 import type { PaymentAdapter } from '@payloadcms/plugin-ecommerce/types'
 import type { PayloadRequest } from 'payload'
 
+import type { Locale } from '@/core/i18n/locales'
+
 import { priceGuestCart } from '../../cart/load'
 import type { CartPricing } from '../../cart/price'
 import { checkDetails, toPaymentAddress } from '../../checkout/details'
 import type { LinePrice } from '../../collections/breakdown'
+import { buyerLocale } from '../../collections/locale'
 import { shopConfig } from '../../config'
 import { clampOversold, stockShortfalls } from '../../orders/stock'
 import { lineSnapshot, STRIPE_METADATA_LIMIT } from './metadata'
@@ -38,15 +41,16 @@ import { lineSnapshot, STRIPE_METADATA_LIMIT } from './metadata'
 // - The inner adapter is handed `total` as the subtotal, so that is what the PaymentIntent charges.
 //
 // Afterwards the transaction gets `subtotal`, `shippingAmount` (subtotal + shippingAmount ===
-// amount) and `linePrices`, and the update must have matched exactly one transaction.
+// amount), `linePrices` and the checkout's `locale`, and the update must have matched exactly one
+// transaction.
 //
 // `confirmOrder` (S18) settles a payment, whoever asks: the browser's return and the webhook both
 // go through `finalizePayment` (orders/finalizePayment.ts) and the plugin's `confirm-order`, which
 // claims the transaction atomically, so one payment makes one order. The wrapper hands the
-// plugin's `finalizeOrder` the order's extra data: the breakdown and line prices copied from the
-// transaction, and a note when the stock left can't cover the order (orders/stock.ts). After the
-// order exists, the call that created it (and only that one: a late or losing call gets the same
-// order back, made by another) sets any stock below 0 back to 0, without ever throwing.
+// plugin's `finalizeOrder` the order's extra data: the breakdown, line prices and language copied
+// from the transaction, and a note when the stock left can't cover the order (orders/stock.ts).
+// After the order exists, the call that created it (and only that one: a late or losing call gets
+// the same order back, made by another) sets any stock below 0 back to 0, without ever throwing.
 
 /** The key in `req.context` where the checkout and the wrapper meet. */
 export const CHECKOUT_CONTEXT = 'lightCheckout'
@@ -68,6 +72,8 @@ export type CheckoutContext = {
    * anything the adapter throws, so this is how the checkout learns why.
    */
   refused?: PaymentRefusal
+  /** The checkout's language, stored on the transaction and copied onto the order (S19's emails). */
+  locale?: Locale
 }
 
 /** The checkout's context on this request, or `null` when the request did not come from the checkout. */
@@ -134,7 +140,7 @@ export function withCheckoutRules(inner: PaymentAdapter): PaymentAdapter {
           cart: { ...data.cart, items, subtotal: pricing.total },
         },
       })
-      await storeBreakdown(req, result.paymentIntentID, pricing)
+      await storeBreakdown(req, result.paymentIntentID, pricing, context.locale)
       return result
     },
 
@@ -158,6 +164,7 @@ export function withCheckoutRules(inner: PaymentAdapter): PaymentAdapter {
               subtotal: transaction?.subtotal ?? null,
               shippingAmount: transaction?.shippingAmount ?? null,
               linePrices: transaction?.linePrices ?? null,
+              locale: buyerLocale(transaction?.locale),
               ...(shortfalls.length ? { needsAttention: true, attentionNote: shortfalls.join('\n') } : {}),
             },
           })
@@ -173,8 +180,8 @@ export function withCheckoutRules(inner: PaymentAdapter): PaymentAdapter {
 const linePricesOf = (pricing: CartPricing): LinePrice[] =>
   pricing.lines.map((line) => ({ product: line.productId ?? '', quantity: line.quantity, unitPrice: line.unitPrice ?? 0, lineTotal: line.lineTotal ?? 0 }))
 
-/** Writes the breakdown and line prices on the payment's transaction, which must be exactly one. */
-async function storeBreakdown(req: PayloadRequest, paymentIntentID: unknown, pricing: CartPricing): Promise<void> {
+/** Writes the breakdown, line prices and language on the payment's transaction, which must be exactly one. */
+async function storeBreakdown(req: PayloadRequest, paymentIntentID: unknown, pricing: CartPricing, locale: Locale | undefined): Promise<void> {
   if (typeof paymentIntentID !== 'string' || !paymentIntentID) {
     throw new Error('The Stripe adapter returned no PaymentIntent ID.')
   }
@@ -182,7 +189,7 @@ async function storeBreakdown(req: PayloadRequest, paymentIntentID: unknown, pri
   const { docs, errors } = await req.payload.update({
     collection: 'transactions',
     where: { 'stripe.paymentIntentID': { equals: paymentIntentID } },
-    data: { subtotal: pricing.subtotal, shippingAmount: pricing.shipping, linePrices: linePricesOf(pricing) },
+    data: { subtotal: pricing.subtotal, shippingAmount: pricing.shipping, linePrices: linePricesOf(pricing), locale: locale ?? null },
     depth: 0,
     overrideAccess: true,
     req,

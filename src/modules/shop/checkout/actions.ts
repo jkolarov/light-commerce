@@ -4,6 +4,8 @@ import config from '@payload-config'
 import { getPayload, type Payload } from 'payload'
 import { z } from 'zod'
 
+import { type Locale, locales } from '@/core/i18n/locales'
+
 import { readCartRef } from '../cart/cookie'
 import { findGuestCart, priceGuestCart } from '../cart/load'
 import { shopConfig } from '../config'
@@ -26,19 +28,20 @@ export type StartPaymentResult =
   | { ok: false; problem: 'tooManyLines' }
   | { ok: false; problem: 'failed' }
 
-const input = z.object({ details: z.record(z.string(), z.unknown()), expectedTotal: z.number().int().min(0) })
+// `locale`: the checkout page's language, for the order's emails (S19).
+const input = z.object({ details: z.record(z.string(), z.unknown()), expectedTotal: z.number().int().min(0), locale: z.enum(locales).optional() })
 
 const cartChanged: StartPaymentResult = { ok: false, problem: 'cartChanged' }
 const failed: StartPaymentResult = { ok: false, problem: 'failed' }
 
 /** Starts the payment of the visitor's cart: details checked, cart priced, PaymentIntent created. */
-export async function startPayment(raw: { details: Record<string, unknown>; expectedTotal: number }): Promise<StartPaymentResult> {
+export async function startPayment(raw: { details: Record<string, unknown>; expectedTotal: number; locale?: Locale }): Promise<StartPaymentResult> {
   const parsed = input.safeParse(raw)
   if (!parsed.success) return failed
   const checked = checkDetails(parsed.data.details, shopConfig().shipping)
   if (!checked.ok) return { ok: false, problem: 'invalid', fields: checked.problems }
   const { details } = checked
-  const { expectedTotal } = parsed.data
+  const { expectedTotal, locale } = parsed.data
 
   let payload: Payload | undefined
   try {
@@ -50,7 +53,7 @@ export async function startPayment(raw: { details: Record<string, unknown>; expe
     const pricing = await priceGuestCart(payload, cart)
     if (!pricing.canCheckout || pricing.total !== expectedTotal) return cartChanged
 
-    const started = await startStripePayment(payload, { cart: ref, customerEmail: details.email, address: toPaymentAddress(details), expectedTotal })
+    const started = await startStripePayment(payload, { cart: ref, customerEmail: details.email, address: toPaymentAddress(details), expectedTotal, locale })
     if (started.ok) return { ok: true, clientSecret: started.clientSecret }
     if (started.reason === 'cartChanged') return cartChanged
     if (started.reason === 'tooManyLines') return { ok: false, problem: 'tooManyLines' }

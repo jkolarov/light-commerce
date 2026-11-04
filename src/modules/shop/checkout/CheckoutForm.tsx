@@ -105,7 +105,7 @@ export function CheckoutForm({ locale, total, currency, shipping, countries, pub
       const key = JSON.stringify(result.details)
       let clientSecret = started.current?.key === key ? started.current.clientSecret : null
       if (!clientSecret) {
-        const start = await startPayment({ details: result.details, expectedTotal: total })
+        const start = await startPayment({ details: result.details, expectedTotal: total, locale })
         if (!start.ok) {
           if (start.problem === 'cartChanged') {
             leaving = true

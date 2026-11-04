@@ -6,9 +6,11 @@ import { fieldAffectsData } from 'payload/shared'
 
 import { isOwner, isStaffOrOwner } from '@/core/access'
 
+import { confirmationEmailSentAtField } from '../emails/fields'
 import { shopGroup } from './admin'
 import { afterAmount, breakdownRow, linePricesField } from './breakdown'
 import { mapFields } from './fields'
+import { buyerLocaleField } from './locale'
 
 // Orders: created by the plugin when a payment is confirmed, never by hand. Staff and owners see
 // them in the admin and move them along (paid → shipped, or refunded: the status only, the refund
@@ -101,6 +103,9 @@ function orderFields(currenciesConfig: CurrenciesConfig, defaults: Field[]): Fie
       } as Partial<Field>),
     ),
     ...attention,
+    // S19: the buyer's language, and when the order's emails went out.
+    buyerLocaleField(),
+    confirmationEmailSentAtField(),
     token,
     settlementKey,
   ]

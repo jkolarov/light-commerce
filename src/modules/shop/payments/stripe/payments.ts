@@ -1,5 +1,6 @@
 import { createPayloadRequest, type Payload } from 'payload'
 
+import type { Locale } from '@/core/i18n/locales'
 import type { Transaction } from '@/payload-types'
 
 import type { CartRef } from '../../cart/load'
@@ -50,11 +51,12 @@ export type PaymentStart =
 /**
  * Starts a Stripe payment for the guest's cart: a PaymentIntent for the cart's price today plus
  * shipping (the wrapper's rules), and its pending transaction. `expectedTotal` is the total the
- * visitor was shown: a cart that costs anything else is refused, never charged.
+ * visitor was shown: a cart that costs anything else is refused, never charged. `locale` is the
+ * checkout's language, kept on the transaction for the order's emails.
  */
 export async function startStripePayment(
   payload: Payload,
-  input: { cart: CartRef; customerEmail: string; address: PaymentAddress; expectedTotal: number },
+  input: { cart: CartRef; customerEmail: string; address: PaymentAddress; expectedTotal: number; locale?: Locale },
 ): Promise<PaymentStart> {
   const { status, body, context } = await callPluginEndpoint(
     payload,
@@ -66,7 +68,7 @@ export async function startStripePayment(
       shippingAddress: input.address,
       billingAddress: input.address,
     },
-    { expectedTotal: input.expectedTotal },
+    { expectedTotal: input.expectedTotal, locale: input.locale },
   )
   const { clientSecret, paymentIntentID } = body
   if (status === 200 && typeof clientSecret === 'string' && clientSecret && typeof paymentIntentID === 'string') {

@@ -1,6 +1,7 @@
 import type { CollectionOverride, CurrenciesConfig } from '@payloadcms/plugin-ecommerce/types'
 
 import { afterAmount, breakdownRow, linePricesField } from './breakdown'
+import { buyerLocaleField } from './locale'
 
 const nobody = () => false
 
@@ -22,6 +23,7 @@ export const transactionsOverride =
         label: { en: 'What needs attention', fr: 'Ce qui est à vérifier' },
         admin: { position: 'sidebar', condition: (data) => Boolean(data?.attentionNote) },
       },
+      buyerLocaleField(),
     ],
     access: { ...defaultCollection.access, create: nobody, update: nobody, delete: nobody },
     admin: { ...defaultCollection.admin, group: false },
