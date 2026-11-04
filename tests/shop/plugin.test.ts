@@ -77,12 +77,17 @@ describeWithShop('shop plugin', () => {
     expect(await access.read!({ req: as(null) } as never)).toBe(false)
   })
 
-  it('lets staff manage orders, and nobody else read them', async () => {
+  it('lets staff read and update orders, only the owner delete one, nobody create one by hand, and nobody else read them', async () => {
+    // S18: orders come from payments only (the plugin creates them with `overrideAccess`).
     const { access } = collection('orders')!
-    for (const operation of ['create', 'read', 'update', 'delete'] as const) {
+    for (const operation of ['read', 'update'] as const) {
       expect(await access[operation]!({ req: as(staff) } as never), operation).toBe(true)
       expect(await access[operation]!({ req: as(null) } as never), operation).toBe(false)
     }
+    for (const user of [owner, staff, null]) expect(await access.create!({ req: as(user) } as never), 'create').toBe(false)
+    expect(await access.delete!({ req: as(owner) } as never)).toBe(true)
+    expect(await access.delete!({ req: as(staff) } as never)).toBe(false)
+    expect(await access.delete!({ req: as(null) } as never)).toBe(false)
     expect(await access.readVersions!({ req: as(null) } as never)).toBe(false)
   })
 
