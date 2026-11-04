@@ -1,0 +1,49 @@
+{
+  "name": "light-commerce",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A lightweight, modular CMS + shop: Next.js with Payload 4 inside it.",
+  "type": "module",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=24.22.1"
+  },
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation payload build",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "typecheck": "next typegen && tsc --noEmit",
+    "lint": "eslint .",
+    "test": "cross-env NODE_OPTIONS=--no-deprecation vitest run",
+    "generate": "pnpm generate:types && pnpm generate:importmap",
+    "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
+    "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
+    "generate:check": "node scripts/generate-check.mjs",
+    "payload": "cross-env NODE_OPTIONS=--no-deprecation payload"
+  },
+  "dependencies": {
+    "@payloadcms/db-sqlite": "4.0.0-beta.6",
+    "@payloadcms/next": "4.0.0-beta.6",
+    "@payloadcms/plugin-ecommerce": "4.0.0-beta.6",
+    "@payloadcms/richtext-lexical": "4.0.0-beta.6",
+    "@payloadcms/transformer-sharp": "4.0.0-beta.6",
+    "@payloadcms/ui": "4.0.0-beta.6",
+    "cross-env": "10.1.0",
+    "graphql": "16.14.2",
+    "next": "16.4.2",
+    "payload": "4.0.0-beta.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.4",
+    "@types/node": "24.12.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.2",
+    "tailwindcss": "4.3.4",
+    "typescript": "6.0.3",
+    "vitest": "5.0.1"
+  }
+}

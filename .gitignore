@@ -1,11 +1,35 @@
+# dependencies
 node_modules/
+
+# next.js and build output
+/.next/
+/out/
+/build
 dist/
+next-env.d.ts
+*.tsbuildinfo
+
+# tests
+/coverage
+
+# secrets: only .env.example is committed
 .env
 .env.*
 !.env.example
-uploads/
+*.pem
+
+# local data: SQLite files (with WAL's -wal/-shm) and uploads
+/data/*
+!/data/.gitkeep
 *.db
+*.db-*
 *.sqlite
+uploads/
+/media
+
+# logs and OS files
+npm-debug.log*
+.pnpm-debug.log*
 .DS_Store
 
 # local tooling
