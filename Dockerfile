@@ -31,9 +31,9 @@ RUN PAYLOAD_SECRET=build-time-placeholder DATABASE_URI=file:/tmp/build.db \
 # pushes the schema outside production. Run it with the data volume mounted:
 #   docker compose run --rm schema
 FROM builder AS schema
-RUN mkdir -p /app/data && chown node:node /app/data /app/src
+RUN mkdir -p /app/data/media && chown -R node:node /app/data /app/src
 USER node
-ENV DATABASE_URI=file:/app/data/light.db
+ENV DATABASE_URI=file:/app/data/light.db MEDIA_DIR=/app/data/media
 CMD ["./node_modules/.bin/payload", "run", "scripts/docker/push-schema.ts"]
 
 # ---- runner: only what the standalone server needs ----
@@ -43,11 +43,12 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
-    DATABASE_URI=file:/app/data/light.db
+    DATABASE_URI=file:/app/data/light.db \
+    MEDIA_DIR=/app/data/media
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 # Database and uploads live on one volume. Created here so a new named volume inherits node's ownership.
-RUN mkdir -p /app/data && chown node:node /app/data
+RUN mkdir -p /app/data/media && chown -R node:node /app/data
 VOLUME /app/data
 USER node
 EXPOSE 3000

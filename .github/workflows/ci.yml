@@ -68,6 +68,18 @@ jobs:
         with:
           context: .
           push: false
+          load: true
           tags: light-commerce:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Smoke test (the container starts and answers /healthz)
+        run: |
+          docker run -d --name smoke -p 3000:3000 -e PAYLOAD_SECRET=ci-placeholder-payload-secret light-commerce:ci
+          for i in $(seq 1 30); do
+            curl -fs http://127.0.0.1:3000/healthz && exit 0
+            sleep 2
+          done
+          docker logs smoke
+          exit 1
+      - if: always()
+        run: docker rm -f smoke

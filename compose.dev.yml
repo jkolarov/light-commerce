@@ -34,7 +34,7 @@ services:
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
     environment:
-      PAYLOAD_SECRET: ${PAYLOAD_SECRET:?set PAYLOAD_SECRET (openssl rand -hex 32)}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:-}
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
@@ -52,7 +52,7 @@ services:
       context: .
       target: schema
     environment:
-      PAYLOAD_SECRET: ${PAYLOAD_SECRET:?set PAYLOAD_SECRET (openssl rand -hex 32)}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:-}
     volumes:
       - data:/app/data
 

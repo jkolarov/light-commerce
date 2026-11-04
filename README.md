@@ -26,10 +26,10 @@ Later phases: outgoing webhooks, an MCP server, an embeddable buy button, redire
 
 ## Docker
 
-The production image is multi-stage (`Dockerfile`): Node 24 slim, Next.js standalone output, runs as the non-root `node` user, `HEALTHCHECK` on `GET /healthz` (answers `{ "ok": true }` without touching the database). One volume at `/app/data` holds the SQLite file (`DATABASE_URI`, default `file:/app/data/light.db` in the container) and uploads.
+The production image is multi-stage (`Dockerfile`): Node 24 slim, Next.js standalone output, runs as the non-root `node` user, `HEALTHCHECK` on `GET /healthz` (answers `{ "ok": true }` without touching the database). One volume at `/app/data` holds the SQLite file (`DATABASE_URI`, `file:/app/data/light.db` in the container) and the uploads (`MEDIA_DIR`, `/app/data/media`).
 
 ```bash
-cp .env.example .env            # set PAYLOAD_SECRET (openssl rand -hex 32)
+cp .env.example .env            # set PAYLOAD_SECRET (openssl rand -hex 32); Mailpit alone does not need it
 docker compose -f compose.dev.yml up -d mailpit                 # email catcher, UI on http://127.0.0.1:8025
 docker compose -f compose.dev.yml run --rm schema               # first run only, see below
 docker compose -f compose.dev.yml --profile app up -d --build   # the app on http://127.0.0.1:3000
