@@ -6,8 +6,6 @@ import type { Page } from '@/payload-types'
 
 import { pagePath } from '../fields/link'
 
-export const HOME_SLUG = 'home'
-
 export type PageLookup =
   | { kind: 'page'; page: Page }
   | { kind: 'redirect'; to: string }
@@ -76,7 +74,11 @@ export async function lookupPage(args: LookupArgs): Promise<PageLookup> {
   return { kind: 'notFound' }
 }
 
-/** The page's slug in every language, with French filling the gaps. For `hreflang` alternates. */
+/**
+ * The page's slug in the languages it can be reached in, for `hreflang` alternates. French fills
+ * a missing translated slug. Visitors only get the languages the page is published in, because
+ * the others answer 404; staff get every language.
+ */
 export async function pageSlugs(args: Pick<LookupArgs, 'payload' | 'user'> & { id: Page['id'] }) {
   const all = await args.payload.findByID({
     collection: 'pages',
@@ -88,6 +90,13 @@ export async function pageSlugs(args: Pick<LookupArgs, 'payload' | 'user'> & { i
     overrideAccess: false,
   })
   const slugs = all.slug as unknown as Partial<Record<Locale, string>>
+  const status = all._status as unknown as Partial<Record<Locale, string>> | string
   const fallback = slugs.fr ?? Object.values(slugs).find(Boolean) ?? ''
-  return Object.fromEntries(locales.map((l) => [l, slugs[l] || fallback])) as Record<Locale, string>
+  const staff = canSeeDrafts(args.user)
+  const result: Partial<Record<Locale, string>> = {}
+  for (const l of locales) {
+    const published = typeof status === 'string' ? status === 'published' : status?.[l] === 'published'
+    if (staff || published) result[l] = slugs[l] || fallback
+  }
+  return result
 }

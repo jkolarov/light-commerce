@@ -1,6 +1,9 @@
-import type { Field } from 'payload'
+import type { Field, TextFieldSingleValidation } from 'payload'
 
 import type { Locale } from '@/core/i18n/locales'
+
+import { requiredInDefaultLocale } from './requiredInDefaultLocale'
+import { HOME_SLUG } from './slugs'
 
 // The link used by blocks (S10) and menus (S11): a page of the site or a URL, with a label per
 // language. Read the page with depth 1 (Payload's default) so `resolveLinkHref` can see it.
@@ -18,11 +21,10 @@ type PageLike = {
   slug?: string | Partial<Record<Locale, string | null>> | null
 }
 
-const HOME_SLUG = 'home'
-
 /** Site-relative path (`/fr/shop/x`) or absolute http(s) URL. Nothing else: no `javascript:`, no `//host`. */
 export function isValidLinkUrl(value: string): boolean {
-  if (value.startsWith('/')) return !value.startsWith('//')
+  // Browsers read `/\host` like `//host`, so a backslash after the first slash is out too.
+  if (value.startsWith('/')) return !value.startsWith('//') && !value.startsWith('/\\')
   return /^https?:\/\/\S+$/i.test(value)
 }
 
@@ -44,7 +46,7 @@ export function linkField(name = 'link'): Field {
           { label: 'URL', value: 'url' },
         ],
       },
-      { name: 'label', type: 'text', localized: true, required: true },
+      { name: 'label', type: 'text', localized: true, validate: requiredInDefaultLocale },
       {
         name: 'page',
         type: 'relationship',
@@ -61,11 +63,11 @@ export function linkField(name = 'link'): Field {
           condition: (_, siblingData) => siblingData?.type === 'url',
           description: 'A path on this site (for example /fr/shop/tisane) or a full https:// address.',
         },
-        validate: (value: unknown, { siblingData }: { siblingData: { type?: string } }) => {
-          if (siblingData?.type !== 'url') return true
-          if (typeof value !== 'string' || !value) return 'Enter a URL.'
+        validate: ((value, options) => {
+          if ((options.siblingData as { type?: string } | undefined)?.type !== 'url') return true
+          if (typeof value !== 'string' || !value) return requiredInDefaultLocale(value, options)
           return isValidLinkUrl(value) || 'Use a path starting with / or a full http(s):// address.'
-        },
+        }) satisfies TextFieldSingleValidation,
       },
     ],
   }

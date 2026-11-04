@@ -73,10 +73,10 @@ describe('pages', () => {
   it('refuses the same slug twice in one language, and the shop slugs', async () => {
     await expect(
       payload.create({ collection: 'pages', data: { title: 'About again', slug: 'a-propos', _status: 'published' }, locale: 'fr', overrideAccess: true }),
-    ).rejects.toThrow()
+    ).rejects.toThrow(/Slug|unique|already/i)
     await expect(
       payload.create({ collection: 'pages', data: { title: 'Shop', _status: 'published' }, locale: 'fr', overrideAccess: true }),
-    ).rejects.toThrow()
+    ).rejects.toThrow(/Slug/)
   })
 
   it('hides an unpublished page from anonymous visitors, shows it to staff', async () => {
@@ -110,6 +110,43 @@ describe('pages', () => {
     expect((await lookupPage({ payload, locale: 'en', slug: 'bientot' })).kind).toBe('notFound')
   })
 
+  it('keeps draft text and versions from anonymous callers', async () => {
+    // Published in every language with French text, then a newer French draft over it.
+    const created = await payload.create({ collection: 'pages', data: { title: 'Public title', _status: 'published' }, locale: 'fr', overrideAccess: true })
+    await payload.update({ collection: 'pages', id: created.id, data: { _status: 'published' }, publishAllLocales: true, locale: 'fr', overrideAccess: true })
+    await payload.update({ collection: 'pages', id: created.id, data: { title: 'DRAFT TITLE', _status: 'draft' }, draft: true, locale: 'fr', overrideAccess: true })
+
+    for (const locale of ['en', 'fr', 'all'] as const) {
+      const anonymous = await payload.find({ collection: 'pages', where: { id: { equals: created.id } }, draft: true, locale, overrideAccess: false })
+      expect(JSON.stringify(anonymous.docs)).not.toContain('DRAFT TITLE')
+      expect(anonymous.docs).toHaveLength(1)
+    }
+    const byId = await payload.findByID({ collection: 'pages', id: created.id, draft: true, locale: 'en', overrideAccess: false })
+    expect(JSON.stringify(byId)).not.toContain('DRAFT TITLE')
+    await expect(payload.findVersions({ collection: 'pages', overrideAccess: false })).rejects.toThrow()
+
+    const asStaff = await payload.find({
+      collection: 'pages', where: { id: { equals: created.id } }, draft: true, locale: 'fr', overrideAccess: false, user: { ...staff, collection: 'users' },
+    })
+    expect(asStaff.docs[0]!.title).toBe('DRAFT TITLE')
+    const versions = await payload.findVersions({ collection: 'pages', overrideAccess: false, user: { ...staff, collection: 'users' } })
+    expect(versions.totalDocs).toBeGreaterThan(0)
+  })
+
+  it('lists in hreflang only the languages where the page is published', async () => {
+    const created = await payload.create({ collection: 'pages', data: { title: 'Seul FR', _status: 'published' }, locale: 'fr', overrideAccess: true })
+    expect(await pageSlugs({ payload, id: created.id })).toEqual({ fr: 'seul-fr' })
+    expect(await pageSlugs({ payload, id: created.id, user: { ...staff, collection: 'users' } })).toEqual({ fr: 'seul-fr', en: 'seul-fr' })
+  })
+
+  it('keeps the slug home in every language', async () => {
+    const home = await payload.create({ collection: 'pages', data: { title: 'Accueil', slug: 'home', _status: 'published' }, locale: 'fr', overrideAccess: true })
+    await payload.update({ collection: 'pages', id: home.id, data: { title: 'Welcome', _status: 'published' }, locale: 'en', overrideAccess: true })
+    const result = await lookupPage({ payload, locale: 'en', slug: 'home' })
+    expect(result.kind).toBe('page')
+    if (result.kind === 'page') expect(result.page.title).toBe('Welcome')
+  })
+
   it('answers not found for an unknown slug', async () => {
     expect((await lookupPage({ payload, locale: 'en', slug: 'nope' })).kind).toBe('notFound')
   })
@@ -119,39 +156,8 @@ describe('pages', () => {
     const livraison = await payload.find({ collection: 'pages', where: { slug: { equals: 'livraison' } }, overrideAccess: true })
     expect(await pageSlugs({ payload, id: livraison.docs[0]!.id })).toEqual({ fr: 'livraison', en: 'livraison' })
   })
-
-  it('resolveLinkHref follows a page and returns null once it is deleted or unpublished', async () => {
-    const target = await payload.create({
-      collection: 'pages',
-      data: { title: 'Contact', _status: 'published' },
-      locale: 'fr',
-      overrideAccess: true,
-    })
-    const link = (id: number) => ({ type: 'page' as const, label: 'x', page: id })
-    const read = async () => {
-      // A link as a block would hold it: the relationship populated by a depth-1 read.
-      const holder = await payload.findByID({ collection: 'pages', id: target.id, depth: 0, overrideAccess: true })
-      return holder
-    }
-    await read()
-    const populated = async () => {
-      const found = await payload.find({
-        collection: 'pages',
-        where: { id: { equals: target.id } },
-        overrideAccess: false,
-      })
-      return found.docs[0] ?? target.id
-    }
-    expect(resolveLinkHref({ type: 'page', page: await populated() }, 'fr')).toBe('/fr/contact')
-
-    await payload.update({ collection: 'pages', id: target.id, data: { _status: 'draft' }, overrideAccess: true })
-    expect(resolveLinkHref({ type: 'page', page: await populated() }, 'fr')).toBeNull()
-
-    await payload.delete({ collection: 'pages', id: target.id, overrideAccess: true })
-    expect(resolveLinkHref({ type: 'page', page: await populated() }, 'fr')).toBeNull()
-    expect(resolveLinkHref(link(target.id), 'fr')).toBeNull()
-  })
 })
+
 
 describe('resolveLinkHref without a database', () => {
   const page = { _status: 'published', slug: { fr: 'a-propos', en: 'about' } }
@@ -164,6 +170,7 @@ describe('resolveLinkHref without a database', () => {
     expect(resolveLinkHref({ type: 'url', url: 'https://example.com' }, 'en')).toBe('https://example.com')
     expect(resolveLinkHref({ type: 'url', url: 'javascript:alert(1)' }, 'en')).toBeNull()
     expect(resolveLinkHref({ type: 'url', url: '//evil.test' }, 'en')).toBeNull()
+    expect(resolveLinkHref({ type: 'url', url: '/\\evil.test' }, 'en')).toBeNull()
     expect(resolveLinkHref(null, 'en')).toBeNull()
   })
   it('returns null for an unloaded or unpublished page', () => {

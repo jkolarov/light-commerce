@@ -2,6 +2,7 @@ import config from '@payload-config'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
+import { cache } from 'react'
 import { getPayload } from 'payload'
 
 import { getLightConfig } from '@/config'
@@ -17,12 +18,13 @@ import { lookupPage, pageSlugs } from './resolve'
 // are thin wrappers around these two functions. Both read Payload at request time: nothing here is
 // built statically (the build runs against an empty database).
 
-async function load(locale: Locale, slug: string) {
+// Cached per request: `generateMetadata` and the page both call it.
+const load = cache(async (locale: Locale, slug: string) => {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await headers() })
   const result = await lookupPage({ payload, locale, slug, user })
   return { payload, user, result }
-}
+})
 
 /** Renders the page, redirects to this language's slug, or answers 404. */
 export async function CmsPage(props: { locale: Locale; slug: string; components: BlockComponents }) {
@@ -54,7 +56,9 @@ export async function cmsPageMetadata(locale: Locale, slug: string): Promise<Met
   if (result.kind !== 'page') return {}
   const { page } = result
   const slugs = await pageSlugs({ payload, user, id: page.id })
-  const languages = Object.fromEntries(locales.map((l) => [l, absolute(pagePath(slugs[l], l))]))
+  const languages = Object.fromEntries(
+    locales.flatMap((l) => (slugs[l] ? [[l, absolute(pagePath(slugs[l], l))]] : [])),
+  )
   const title = page.meta?.title || page.title || undefined
   const description = page.meta?.description || undefined
   const image = imageUrl(page.meta?.image)
