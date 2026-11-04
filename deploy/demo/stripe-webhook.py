@@ -28,6 +28,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -53,7 +54,11 @@ def read_env():
 
 
 def write_secret(secret):
-    """Sets STRIPE_WEBHOOKS_SIGNING_SECRET in .env (replaces the line, or appends it). Keeps mode 600."""
+    """Sets STRIPE_WEBHOOKS_SIGNING_SECRET in .env (replaces the line, or appends it).
+
+    Atomically: a temporary file (mode 600) in the same folder, then os.replace, so an interrupted
+    run never leaves a half-written .env (the only copy of the demo's secrets).
+    """
     lines = open(ENV).read().splitlines() if os.path.exists(ENV) else []
     out, done = [], False
     for line in lines:
@@ -64,10 +69,16 @@ def write_secret(secret):
             out.append(line)
     if not done:
         out.append(f"{SECRET_VAR}={secret}")
-    fd = os.open(ENV, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write("\n".join(out) + "\n")
-    os.chmod(ENV, 0o600)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(ENV), prefix=".env.", suffix=".tmp")  # mode 600
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write("\n".join(out) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, ENV)
+    except BaseException:
+        os.unlink(tmp)
+        raise
 
 
 KEY = read_env().get("STRIPE_SECRET_KEY", "")
