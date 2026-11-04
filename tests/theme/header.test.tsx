@@ -16,7 +16,7 @@ const props: SiteHeaderProps = {
   locale: 'fr',
   locales: ['fr', 'en'],
   siteName: 'Les Claies',
-  logo: '/logo.svg',
+  logo: { src: '/logo.svg', width: 579, height: 106 },
   nav,
   shop: true,
   cart: <span data-cart="">Panier (2)</span>,

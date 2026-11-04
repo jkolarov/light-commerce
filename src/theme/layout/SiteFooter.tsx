@@ -6,6 +6,7 @@ import type { NavItem } from '@/core/types'
 
 import { Container } from '../components/Container'
 import { cx, focusRing, textLink } from '../components/styles'
+import type { LogoImage } from '../logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { Logo } from './Logo'
 
@@ -14,7 +15,8 @@ export type SiteFooterProps = {
   /** `locales.available` from light.config.ts. */
   locales: readonly Locale[]
   siteName: string
-  logo: string
+  /** The logo and its size (`logoImage`). */
+  logo: LogoImage
   /** `site.contactEmail` from light.config.ts. */
   contactEmail: string
   /** The CMS footer menu (legal pages included); empty when the CMS is off. */
@@ -38,7 +40,7 @@ export function SiteFooter({ locale, locales, siteName, logo, contactEmail, nav,
       {/* Two columns on tablets (the contact under the logo), three from `lg`. */}
       <Container className="grid gap-x-12 gap-y-10 py-12 sm:py-16 md:grid-cols-2 lg:grid-cols-[5fr_3fr_4fr]">
         <div>
-          <Logo locale={locale} logo={logo} siteName={siteName} className="h-8" />
+          <Logo locale={locale} image={logo} siteName={siteName} className="h-8" />
           {/* A textarea: its line breaks are kept by CSS, and it is only ever text. */}
           {text && <p className="mt-6 max-w-[38ch] leading-[1.6] whitespace-pre-line text-muted">{text}</p>}
         </div>

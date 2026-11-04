@@ -7,6 +7,7 @@ import type { NavItem } from '@/core/types'
 
 import { Container } from '../components/Container'
 import { cx, focusRing } from '../components/styles'
+import type { LogoImage } from '../logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { Logo } from './Logo'
 import { MobileMenu } from './MobileMenu'
@@ -17,7 +18,8 @@ export type SiteHeaderProps = {
   /** `locales.available` from light.config.ts. */
   locales: readonly Locale[]
   siteName: string
-  logo: string
+  /** The logo and its size (`logoImage`). */
+  logo: LogoImage
   /** The CMS header menu; empty when the CMS is off. */
   nav: NavItem[]
   /** Whether the shop is on: adds the shop link. */
@@ -59,7 +61,7 @@ export function SiteHeader(props: SiteHeaderProps) {
   return (
     <header className="relative border-b border-text/15">
       <Container className="flex min-h-[4.25rem] items-center gap-x-10 py-3 lg:min-h-[5.5rem]">
-        <Logo locale={locale} logo={logo} siteName={siteName} className="h-7 sm:h-8" />
+        <Logo locale={locale} image={logo} siteName={siteName} priority className="h-7 sm:h-8" />
 
         {links.length > 0 && (
           <nav aria-label={t('mainLabel')} className="hidden lg:block">

@@ -13,6 +13,9 @@ export const languageNames: Record<Locale, string> = { fr: 'Français', en: 'Eng
  * wrong page only when another page uses that same slug in the target language (a French `contact`
  * page whose English slug is `contact-us`, next to an English page whose slug is `contact`). To fix
  * that, a page would pass its own translated addresses (its `hreflang` alternates) to the switch.
+ *
+ * Shop routes (`/shop/<product>`, cart, checkout, order) need nothing more: a product has one slug
+ * shared by both languages (plan, "Collections, blocks, routes"), so the swapped address is right.
  */
 export function switchLocalePath(pathname: string | null, target: Locale, search = ''): string {
   const query = search.replace(/^\?/, '')

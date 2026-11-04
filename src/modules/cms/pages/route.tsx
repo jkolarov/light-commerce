@@ -32,11 +32,8 @@ export async function CmsPage(props: { locale: Locale; slug: string; components:
   if (result.kind === 'redirect') redirect(result.to)
   if (result.kind === 'notFound') notFound()
   const { page } = result
-  return (
-    <main>
-      <RenderBlocks blocks={page.layout} components={props.components} locale={props.locale} />
-    </main>
-  )
+  // No <main> here: the locale layout draws the page's one <main> around every route.
+  return <RenderBlocks blocks={page.layout} components={props.components} locale={props.locale} />
 }
 
 function absolute(path: string): string {

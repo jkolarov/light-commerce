@@ -8,7 +8,7 @@ const props: SiteFooterProps = {
   locale: 'fr',
   locales: ['fr', 'en'],
   siteName: 'Les Claies',
-  logo: '/logo.svg',
+  logo: { src: '/logo.svg', width: 579, height: 106 },
   contactEmail: 'bonjour@lesclaies.example',
   nav: [
     { label: 'La ferme', href: '/fr/la-ferme' },

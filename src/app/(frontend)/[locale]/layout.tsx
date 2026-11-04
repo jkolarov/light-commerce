@@ -9,6 +9,7 @@ import { isLocale } from '@/core/i18n/locales'
 import { loadedFonts } from '@/theme/fonts'
 import { loadFrame } from '@/theme/frame'
 import { MAIN_ID, SiteFooter, SiteHeader, SkipLink } from '@/theme/layout'
+import { logoImage } from '@/theme/logo'
 import { asStyle, themeStyle } from '@/theme/themeStyle'
 import '@/theme/globals.css'
 
@@ -44,7 +45,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   setRequestLocale(locale)
 
   const { site, theme, locales } = config
-  const frame = await loadFrame(locale, config)
+  const [frame, logo] = await Promise.all([loadFrame(locale, config), logoImage(theme.logo)])
 
   return (
     <html lang={locale} style={asStyle(themeStyle(theme, loadedFonts))}>
@@ -55,7 +56,7 @@ export default async function LocaleLayout({ children, params }: Props) {
             locale={locale}
             locales={locales.available}
             siteName={site.name}
-            logo={theme.logo}
+            logo={logo}
             nav={frame.headerNav}
             shop={frame.shop}
             cart={frame.cart}
@@ -67,7 +68,7 @@ export default async function LocaleLayout({ children, params }: Props) {
             locale={locale}
             locales={locales.available}
             siteName={site.name}
-            logo={theme.logo}
+            logo={logo}
             contactEmail={site.contactEmail}
             nav={frame.footerNav}
             text={frame.footerText}

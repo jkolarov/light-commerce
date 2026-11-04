@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
@@ -69,8 +69,21 @@ describe('src/theme/fonts/index.ts', () => {
   const dir = path.resolve('src/theme/fonts')
   const source = readFileSync(path.join(dir, 'index.ts'), 'utf8')
 
+  /** Each `const x = localFont({ ... })` call: its name, CSS family, files and whether it is preloaded. */
+  const calls = [...source.matchAll(/const (\w+) = localFont\(\{([\s\S]*?)\n\}\)/g)].map(([, name = '', body = '']) => ({
+    name,
+    family: body.match(/prop: 'font-family', value: '([^']+)'/)?.[1],
+    files: [...body.matchAll(/path: '([^']+)'/g)].map((match) => match[1] ?? ''),
+    preload: !/preload: false/.test(body),
+  }))
+
+  /** Each `loadedFonts` entry: the config's family name and the call it uses. */
+  const loaded = [...source.slice(source.indexOf('export const loadedFonts')).matchAll(/^\s+'?([^':]+)'?: (\w+)\.style\.fontFamily/gm)].map(
+    ([, configName = '', call = '']) => ({ configName, call }),
+  )
+
   it('loads font files that exist, each family with its licence', () => {
-    const files = [...source.matchAll(/path: '([^']+)'/g)].map((match) => match[1] ?? '')
+    const files = calls.flatMap((call) => call.files)
     expect(files.length).toBeGreaterThan(0)
     for (const file of files) {
       expect(existsSync(path.join(dir, file)), file).toBe(true)
@@ -78,9 +91,27 @@ describe('src/theme/fonts/index.ts', () => {
     }
   })
 
-  it('loads every shipped family', () => {
-    const loadedNames = source.slice(source.indexOf('export const loadedFonts')).match(/^\s+(?:'([^']+)'|(\w+)):/gm) ?? []
-    const names = loadedNames.map((line) => line.trim().replace(/:$/, '').replace(/^'|'$/g, ''))
-    expect(names.sort()).toEqual(shippedFamilies.map((family) => family.name).sort())
+  it('gives every call a CSS family, with one preloaded call per family', () => {
+    expect(calls.length).toBeGreaterThan(0)
+    for (const call of calls) expect(call.family, `${call.name} declares no font-family`).toMatch(/^\w+$/)
+    const families = [...new Set(calls.map((call) => call.family))]
+    for (const family of families) {
+      expect(calls.filter((call) => call.family === family && call.preload), `preloaded calls for ${family}`).toHaveLength(1)
+    }
+  })
+
+  it('maps every shipped family to its preloaded call', () => {
+    expect(loaded.map((entry) => entry.configName).sort()).toEqual(shippedFamilies.map((family) => family.name).sort())
+    for (const entry of loaded) expect(calls.find((call) => call.name === entry.call)?.preload, entry.call).toBe(true)
+  })
+
+  it('preloads at most 80 KB of fonts on every page', () => {
+    const bytes = calls
+      .filter((call) => call.preload)
+      .flatMap((call) => call.files)
+      .reduce((sum, file) => sum + statSync(path.join(dir, file)).size, 0)
+    // Spectral 300 and 400 and Source Sans 3 (normal) are about 71 KB. Italics and rare weights
+    // go in a `preload: false` call.
+    expect(bytes).toBeLessThanOrEqual(80 * 1024)
   })
 })

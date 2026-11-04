@@ -15,40 +15,54 @@ type Props = {
 
 /**
  * The menu on small screens: a button that shows and hides a panel under the header (the
- * disclosure pattern). The panel closes on Escape (focus goes back to the button), when a link in
- * it is followed, and when the page changes. The header must be `relative`: the panel spans it.
+ * disclosure pattern). The panel closes on Escape (focus goes back to the button), on a click
+ * outside it, when a link in it is followed, and whenever the page changes (Back included).
+ * The header must be `relative`: the panel spans it.
  */
 export function MobileMenu({ label, children, className }: Props) {
-  const pathname = usePathname() ?? ''
-  // The page the menu was opened on: it is open only while that page is shown.
-  const [openOn, setOpenOn] = useState<string | null>(null)
-  const open = openOn === pathname
+  const pathname = usePathname()
+  const [open, setOpen] = useState(false)
+  // Closes on every page change. Adjusting state while rendering, as React recommends for
+  // state that follows a prop, rather than in an effect.
+  const [shownOn, setShownOn] = useState(pathname)
+  if (shownOn !== pathname) {
+    setShownOn(pathname)
+    setOpen(false)
+  }
   const id = useId()
+  const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      setOpenOn(null)
+      setOpen(false)
       button.current?.focus()
     }
+    const onPointerDown = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false)
+    }
     document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('pointerdown', onPointerDown)
+    }
   }, [open])
 
   const closeOnLink = (event: MouseEvent<HTMLDivElement>) => {
-    if ((event.target as Element).closest('a')) setOpenOn(null)
+    if ((event.target as Element).closest('a')) setOpen(false)
   }
 
   return (
-    <div className={className}>
+    <div ref={root} className={className}>
       <button
         ref={button}
         type="button"
         aria-expanded={open}
         aria-controls={id}
-        onClick={() => setOpenOn(open ? null : pathname)}
+        onClick={() => setOpen(!open)}
         className={cx('-mr-2 inline-flex min-h-11 items-center gap-2 rounded-[0.1875rem] px-2 text-base text-text', focusRing)}
       >
         <svg aria-hidden="true" viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
