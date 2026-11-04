@@ -1,9 +1,10 @@
 import type { CollectionConfig, Payload } from 'payload'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, expect, it } from 'vitest'
 
 import { anyone, isStaffOrOwner } from '@/core/access'
 import { linkField, resolveLinkHref } from '@/modules/cms/fields/link'
 
+import { describeWithCms } from '../support/modules'
 import { startPayload, type TestPayload } from '../support/payload'
 
 // A test-only collection that holds a link, the way a block or a menu will.
@@ -14,7 +15,7 @@ const holders: CollectionConfig = {
   versions: { drafts: true },
 }
 
-describe('linkField in a collection', () => {
+describeWithCms('linkField in a collection', () => {
   let test: TestPayload
   let payload: Payload
 

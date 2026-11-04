@@ -51,7 +51,7 @@ How CI switches modules, and what that means for generated files:
 
 - `LIGHT_CI_MODULES` replaces `modules` in `light.config.ts` without editing it: `cms,shop`, `cms` or `shop`. The result is checked like the file itself (the shop still needs its `shop` section). Run a CI setup locally with, for example, `LIGHT_CI_MODULES=cms pnpm build`. It is for CI and tests only: a site switches modules in `light.config.ts`, and the variable is not in `.env.example`. A production server (`NODE_ENV=production` without `CI` set) refuses to start when it is set, and a dev server logs a warning. To serve a CI setup locally, use `CI=1 LIGHT_CI_MODULES=cms pnpm start`.
 - The committed `src/payload-types.ts` describes both modules, because every module's code is type-checked whichever modules are on. With a module off, Payload (`dev`, `build`, `generate`) writes its types to a scratch file in the OS temp dir instead (`src/core/generatedTypes.ts`). So run `pnpm generate` with both modules on (`LIGHT_CI_MODULES=cms,shop pnpm generate` if `light.config.ts` switches one off).
-- The import map is still rewritten for the active setup, without the components of a module that is off. Don't commit it from such a setup.
+- The import map is still rewritten for the active setup, without the components of a module that is off. Don't commit it from such a setup: restore it with `git checkout -- 'src/app/(payload)/admin/importMap.js'`, or with `pnpm generate` with both modules on.
 
 ## Rules
 
