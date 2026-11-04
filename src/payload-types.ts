@@ -647,6 +647,7 @@ export interface Order {
   needsAttention?: boolean | null;
   attentionNote?: string | null;
   accessToken?: string | null;
+  settlementKey?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -699,6 +700,7 @@ export interface Transaction {
     | number
     | boolean
     | null;
+  attentionNote?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1138,6 +1140,7 @@ export interface OrdersSelect<T extends boolean = true> {
   needsAttention?: T;
   attentionNote?: T;
   accessToken?: T;
+  settlementKey?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1185,6 +1188,7 @@ export interface TransactionsSelect<T extends boolean = true> {
   subtotal?: T;
   shippingAmount?: T;
   linePrices?: T;
+  attentionNote?: T;
   updatedAt?: T;
   createdAt?: T;
 }

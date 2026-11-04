@@ -30,6 +30,8 @@ export const stripe = {
   breakSettlement: false,
   /** How many times the plugin's `confirm-order` reached the adapter. */
   confirmCalls: 0,
+  /** Makes every status lookup fail, as when Stripe is down. */
+  unreachable: false,
   /** The PaymentIntent of the last payment started. */
   last(): string {
     return [...this.intents.keys()].at(-1)!
@@ -109,8 +111,9 @@ export function fakeStripeAdapterModule(original: unknown) {
 export function fakeStatusModule() {
   return {
     paymentOutcome: async (id: string) => {
+      if (stripe.unreachable) throw new Error('Stripe cannot be reached')
       const status = stripe.intents.get(id)?.status
-      if (!status) throw new Error(`No such PaymentIntent: ${id}`)
+      if (!status) return 'unknown'
       return status === 'succeeded' ? 'succeeded' : status === 'processing' ? 'processing' : 'failed'
     },
   }

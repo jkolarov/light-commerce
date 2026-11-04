@@ -41,7 +41,9 @@ function tokenMatches(expected: unknown, given: unknown): boolean {
 type ShownProduct = Pick<Product, 'id' | 'title' | 'images'>
 
 async function productsOf(payload: Payload, order: Order, locale: Locale): Promise<Map<string, ShownProduct>> {
-  const ids = [...new Set((order.items ?? []).map((item) => productIdOf(item.product)).filter((id) => id !== null))]
+  const fromItems = (order.items ?? []).map((item) => productIdOf(item.product))
+  const fromPrices = readLinePrices(order.linePrices).map((line) => String(line.product))
+  const ids = [...new Set([...fromItems, ...fromPrices].filter((id): id is string => Boolean(id)))]
   if (!ids.length) return new Map()
   const { docs } = await payload.find({
     collection: 'products',
@@ -66,19 +68,22 @@ export async function loadOrderForGuest(payload: Payload, input: { id: unknown; 
   const shop = shopConfig()
   const products = await productsOf(payload, order, locale)
   const prices = readLinePrices(order.linePrices)
-  const lines = (order.items ?? []).map((item, index) => {
-    const productId = productIdOf(item.product)
+  const shown = (productId: string | null) => {
     const product = productId ? products.get(productId) : undefined
     const photo = asMedia(product?.images?.[0])
-    const price = prices.find((line) => String(line.product) === productId)
-    return {
-      id: item.id ?? String(index),
-      title: product?.title?.trim() || null,
-      image: photo ? thumbnailAttributes(photo) : null,
-      quantity: item.quantity,
-      lineTotal: price ? price.lineTotal : null,
-    }
-  })
+    return { title: product?.title?.trim() || null, image: photo ? thumbnailAttributes(photo) : null }
+  }
+  // The order's lines; or, when it has fewer than were charged (a settlement interrupted), the
+  // lines as charged.
+  const items = order.items ?? []
+  const lines =
+    items.length >= prices.length
+      ? items.map((item, index) => {
+          const productId = productIdOf(item.product)
+          const price = prices.find((line) => String(line.product) === productId)
+          return { id: item.id ?? String(index), ...shown(productId), quantity: item.quantity, lineTotal: price ? price.lineTotal : null }
+        })
+      : prices.map((line, index) => ({ id: `charged-${index}`, ...shown(String(line.product)), quantity: line.quantity, lineTotal: line.lineTotal }))
   const total = order.amount ?? 0
   const shipping = order.shippingAmount ?? 0
   const a = order.shippingAddress ?? {}

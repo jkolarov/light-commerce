@@ -44,6 +44,29 @@ async function holdsCart(payload: Payload, ref: CartRef, transactionCart: unknow
   return Boolean(cart)
 }
 
+/** How long the browser waits for another call (the webhook) that is settling the payment right now. */
+export const SETTLEMENT_WAIT_MS = 3000
+const POLL_MS = 250
+
+/**
+ * The order of a payment another call is settling right now (the plugin's losing calls give up
+ * after 500 ms; a slow winner can take longer). Reads only, for up to `SETTLEMENT_WAIT_MS`.
+ */
+async function waitForOrder(payload: Payload, paymentIntentId: string): Promise<CheckoutOutcome | null> {
+  const deadline = Date.now() + SETTLEMENT_WAIT_MS
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, POLL_MS))
+    const transaction = await findPaymentTransaction(payload, paymentIntentId)
+    const orderId = transaction?.status === 'succeeded' ? (typeof transaction.order === 'object' ? transaction.order?.id : transaction.order) : null
+    if (orderId) {
+      const order = await payload.findByID({ collection: 'orders', id: orderId, depth: 0, overrideAccess: true, disableErrors: true })
+      return order ? { kind: 'order', orderId: order.id, accessToken: order.accessToken ?? null } : null
+    }
+    if (transaction?.status !== 'processing' && transaction?.status !== 'pending') return null
+  }
+  return null
+}
+
 /** The order for the browser holding the payment's cart, or `null` when none comes back. */
 async function orderFor(payload: Payload, paymentIntentId: string): Promise<CheckoutOutcome | null> {
   try {
@@ -81,10 +104,10 @@ export async function confirmCheckout(payload: Payload, input: { paymentIntentId
     payload.logger.error({ err: error, msg: `Shop: could not read PaymentIntent ${paymentIntentId} at Stripe` })
     return { kind: 'checking' }
   }
-  if (outcome === 'failed') return { kind: 'failed' }
+  if (outcome === 'failed' || outcome === 'unknown') return { kind: 'failed' }
 
   if (holder && outcome === 'succeeded') {
-    const settled = await orderFor(payload, paymentIntentId)
+    const settled = (await orderFor(payload, paymentIntentId)) ?? (await waitForOrder(payload, paymentIntentId))
     if (settled) return settled
   }
   // Paid, or being settled by Stripe, and no order from here: the webhook creates it.

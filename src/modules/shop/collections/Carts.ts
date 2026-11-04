@@ -6,6 +6,7 @@ import { isStaffOrOwner } from '@/core/access'
 
 import { checkCartItems } from '../cart/checkItems'
 import { hiddenFromAdmin } from './admin'
+import { keepCartsOfPayments } from './keepReferenced'
 
 // Carts: the plugin's own collection, for guests (reached with the cart's `secret`).
 // Hidden from the admin; versions off, because every cart change would otherwise add one.
@@ -30,6 +31,8 @@ export const cartsOverride: CollectionOverride = async (args) => {
       // Published products with a price, never more than the stock (cart/checkItems.ts). First,
       // so the plugin's pricing only sees lines that passed.
       beforeChange: [checkCartItems, ...(carts.hooks?.beforeChange ?? [])],
+      // Not while a payment for it is being settled (./keepReferenced.ts).
+      beforeDelete: [...(carts.hooks?.beforeDelete ?? []), keepCartsOfPayments],
     },
   }
 }

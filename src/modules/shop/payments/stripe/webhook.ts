@@ -1,7 +1,7 @@
 import type { Endpoint, PayloadRequest } from 'payload'
 import Stripe from 'stripe'
 
-import { finalizePayment, UnknownPaymentError } from '../../orders/finalizePayment'
+import { finalizePayment, OrderDeletedError, UnknownPaymentError } from '../../orders/finalizePayment'
 import type { StripeSettings } from './env'
 
 // Stripe's webhook, `POST /api/payments/stripe/webhooks`: it replaces the built-in adapter's,
@@ -11,7 +11,8 @@ import type { StripeSettings } from './env'
 // - no signature, or a bad one: 400, nothing read or written;
 // - `payment_intent.succeeded`: `finalizePayment` creates the order unless it exists (the browser
 //   may never come back), then 200. A payment the shop didn't start (another app on the same
-//   Stripe account): 200, ignored. Anything else that goes wrong: 500, so Stripe sends the event
+//   Stripe account), or one whose order the owner deleted since: 200, ignored. Anything else that
+//   goes wrong: 500, so Stripe sends the event
 //   again later (it retries for days), and `finalizePayment` is idempotent;
 // - every other event: 200, ignored.
 
@@ -45,8 +46,8 @@ export function webhookEndpoint(settings: StripeSettings): Endpoint {
         payload.logger.info({ msg: `Shop: webhook ${event.id}: order ${order.id} for PaymentIntent ${paymentIntentId}.` })
         return answer(200, { received: true })
       } catch (error) {
-        if (error instanceof UnknownPaymentError) {
-          payload.logger.info({ msg: `Shop: webhook ${event.id}: PaymentIntent ${paymentIntentId} is not one of this shop's, ignored.` })
+        if (error instanceof UnknownPaymentError || error instanceof OrderDeletedError) {
+          payload.logger.info({ msg: `Shop: webhook ${event.id}: ignored (${error.message})` })
           return answer(200, { received: true, ignored: true })
         }
         payload.logger.error({ err: error, msg: `Shop: webhook ${event.id}: could not settle PaymentIntent ${paymentIntentId}; Stripe will send it again.` })

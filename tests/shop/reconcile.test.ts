@@ -13,6 +13,10 @@ import { STRIPE_TEST_ENV, stripe } from '../support/stripe'
 vi.mock('@payloadcms/plugin-ecommerce/payments/stripe', async (original) => (await import('../support/stripe')).fakeStripeAdapterModule(await original()))
 vi.mock('@/modules/shop/payments/stripe/status', async () => (await import('../support/stripe')).fakeStatusModule())
 
+// What follows a paid order (S19's emails), watched.
+const seam = vi.hoisted(() => ({ calls: [] as number[] }))
+vi.mock('@/modules/shop/orders/finalized', () => ({ onOrderFinalized: async (_payload: unknown, order: { id: number }) => void seam.calls.push(order.id) }))
+
 describeWithShop('reconciling payments left behind', () => {
   let test: TestPayload
   let payload: Payload
@@ -81,6 +85,71 @@ describeWithShop('reconciling payments left behind', () => {
     const flagged = await payload.findByID({ collection: 'orders', id: order.id, overrideAccess: true })
     expect(flagged).toMatchObject({ needsAttention: true })
     expect(flagged.attentionNote).toMatch(/interrompu/)
+    // What follows a paid order runs now: no webhook may ever come again.
+    expect(seam.calls).toContain(order.id)
+  })
+
+  it('says what was charged when a recovered order lost its lines, and that stock and cart were not updated', async () => {
+    const stuck = await started()
+    stripe.pay(stuck.stripe!.paymentIntentID!)
+    await payload.db.updateOne({ collection: 'transactions', id: stuck.id, data: { status: 'processing' } })
+    // The order the plugin created before it stopped, without its lines.
+    const order = await payload.create({
+      collection: 'orders',
+      data: { amount: stuck.amount, transactions: [stuck.id], customerEmail: 'camille@example.com', items: [], linePrices: stuck.linePrices },
+      overrideAccess: true,
+    })
+    expect(resultFor(await reconcile.reconcilePayments(payload, { now: later(1) }), stuck.id)).toMatchObject({ action: 'recovered' })
+    const flagged = await payload.findByID({ collection: 'orders', id: order.id, overrideAccess: true })
+    expect(flagged.attentionNote).toMatch(/perdu des lignes.*1 × Mélisse \(7,00\s€\).*Le stock et le panier n’ont pas été mis à jour/)
+    // Its page shows the lines as charged.
+    const load = await import('@/modules/shop/orders/load')
+    const shown = await load.loadOrderForGuest(payload, { id: String(order.id), token: order.accessToken, locale: 'fr' })
+    expect(shown?.summary.lines).toEqual([expect.objectContaining({ title: 'Mélisse', quantity: 1, lineTotal: 700 })])
+  })
+
+  it('stops looking at payments that can never be settled', async () => {
+    // No PaymentIntent, and one Stripe doesn't know: no Stripe payment was made.
+    const none = await started()
+    await payload.db.updateOne({ collection: 'transactions', id: none.id, data: { stripe: { paymentIntentID: null } } })
+    const unknown = await started()
+    stripe.intents.delete(unknown.stripe!.paymentIntentID!)
+    // Paid, but its cart is gone (a script deleted it): flagged once.
+    const orphan = await started()
+    stripe.pay(orphan.stripe!.paymentIntentID!)
+    await payload.db.deleteOne({ collection: 'carts', where: { id: { equals: orphan.cart as number } } })
+
+    const first = await reconcile.reconcilePayments(payload, { now: later(1) })
+    expect(resultFor(first, none.id)).toMatchObject({ action: 'failed', reason: 'no PaymentIntent' })
+    expect(resultFor(first, unknown.id)).toMatchObject({ action: 'failed', reason: 'unknown to Stripe' })
+    expect(resultFor(first, orphan.id)).toMatchObject({ action: 'flagged' })
+    expect((await transaction(orphan.id)).attentionNote).toMatch(/Payé chez Stripe.*panier n’existe plus/)
+    // The next night, none of them again.
+    const next = await reconcile.reconcilePayments(payload, { now: later(48) })
+    for (const t of [none, unknown, orphan]) expect(resultFor(next, t.id)).toBeUndefined()
+  })
+
+  it('looks at a bounded number of payments per run, the oldest first, and leaves the rest when Stripe is down', async () => {
+    await started()
+    await started()
+    const { docs: candidates } = await payload.find({
+      collection: 'transactions',
+      where: { and: [{ status: { in: ['pending', 'processing'] } }, { attentionNote: { exists: false } }] },
+      sort: 'updatedAt',
+      depth: 0,
+      overrideAccess: true,
+      pagination: false,
+    })
+    expect(candidates.length).toBeGreaterThan(1)
+    const results = await reconcile.reconcilePayments(payload, { now: later(1), limit: 1 })
+    expect(results.map((result) => result.transactionId)).toEqual([candidates[0]!.id])
+    stripe.unreachable = true
+    try {
+      const down = await reconcile.reconcilePayments(payload, { now: later(1) })
+      expect(down.every((result) => result.action === 'left')).toBe(true)
+    } finally {
+      stripe.unreachable = false
+    }
   })
 
   it('settles again a settlement that stopped before the order existed', async () => {

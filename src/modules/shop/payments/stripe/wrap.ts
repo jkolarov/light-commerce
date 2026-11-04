@@ -45,7 +45,8 @@ import { lineSnapshot, STRIPE_METADATA_LIMIT } from './metadata'
 // claims the transaction atomically, so one payment makes one order. The wrapper hands the
 // plugin's `finalizeOrder` the order's extra data: the breakdown and line prices copied from the
 // transaction, and a note when the stock left can't cover the order (orders/stock.ts). After the
-// order exists it sets any stock below 0 back to 0, without ever throwing.
+// order exists, the call that created it (and only that one: a late or losing call gets the same
+// order back, made by another) sets any stock below 0 back to 0, without ever throwing.
 
 /** The key in `req.context` where the checkout and the wrapper meet. */
 export const CHECKOUT_CONTEXT = 'lightCheckout'
@@ -147,10 +148,13 @@ export function withCheckoutRules(inner: PaymentAdapter): PaymentAdapter {
           const transaction = await req.payload.findByID({ collection: 'transactions', id: transactionID as number, depth: 0, overrideAccess: true, disableErrors: true, req })
           const lines = transaction?.items ?? []
           const shortfalls = await stockShortfalls(req, lines)
+          // Only the call whose data the plugin used to create the order gets its key back.
+          const settlementKey = randomBytes(12).toString('hex')
           const order = await args.finalizeOrder({
             transactionID,
             orderData: {
               ...orderData,
+              settlementKey,
               subtotal: transaction?.subtotal ?? null,
               shippingAmount: transaction?.shippingAmount ?? null,
               linePrices: transaction?.linePrices ?? null,
@@ -158,7 +162,7 @@ export function withCheckoutRules(inner: PaymentAdapter): PaymentAdapter {
             },
           })
           // The order exists: from here on nothing may throw.
-          await clampOversold(req, lines, order)
+          if (order.settlementKey === settlementKey) await clampOversold(req, lines, order)
           return order
         },
       }),

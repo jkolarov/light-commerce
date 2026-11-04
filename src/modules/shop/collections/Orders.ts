@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto'
 
 import type { CollectionOverride, CurrenciesConfig } from '@payloadcms/plugin-ecommerce/types'
-import type { Field, FieldHook } from 'payload'
+import type { CollectionBeforeChangeHook, Field, FieldHook } from 'payload'
 import { fieldAffectsData } from 'payload/shared'
 
 import { isOwner, isStaffOrOwner } from '@/core/access'
@@ -27,6 +27,12 @@ export const newAccessToken = () => randomBytes(32).toString('base64url')
 /** On create, always a new token, whatever the data said; never changed afterwards. */
 const fillAccessToken: FieldHook = ({ operation, value }) => (operation === 'create' ? newAccessToken() : value)
 
+/** An order's date is when it was paid: an update never changes it. */
+const keepCreatedAt: CollectionBeforeChangeHook = ({ data, operation, originalDoc }) =>
+  operation === 'update' && originalDoc?.createdAt ? { ...data, createdAt: originalDoc.createdAt } : data
+
+const keepStatus: FieldHook = ({ value, originalDoc }) => value || originalDoc?.status || 'processing'
+
 /** What staff may not change on an order: what was bought, paid and promised, and its token. */
 const LOCKED = new Set(['items', 'shippingAddress', 'customer', 'customerEmail', 'transactions', 'amount', 'currency'])
 
@@ -40,6 +46,10 @@ function statusField(field: Field): Field {
   if (!fieldAffectsData(field) || field.name !== 'status' || field.type !== 'select') return field
   return {
     ...field,
+    // An order always has a status: an empty one keeps the previous status (`processing` on
+    // create, which is what the plugin sends). Not `required`: the hook already guarantees it,
+    // and nothing may fail validation while the plugin creates an order.
+    hooks: { ...field.hooks, beforeValidate: [...(field.hooks?.beforeValidate ?? []), keepStatus] },
     options: [
       // The plugin creates every order as `processing`: it is paid, and waits to be shipped.
       { value: 'processing', label: { en: 'Paid, to ship', fr: 'Payée, à expédier' } },
@@ -70,6 +80,8 @@ function orderFields(currenciesConfig: CurrenciesConfig, defaults: Field[]): Fie
       admin: { position: 'sidebar', condition: (data) => Boolean(data?.needsAttention || data?.attentionNote) },
     },
   ]
+  // The settlement's own mark (wrap.ts): tells the call that created the order from later ones.
+  const settlementKey: Field = { name: 'settlementKey', type: 'text', access: { read: isStaffOrOwner, update: nobody }, admin: { hidden: true } }
   const token: Field = {
     name: 'accessToken',
     type: 'text',
@@ -79,9 +91,18 @@ function orderFields(currenciesConfig: CurrenciesConfig, defaults: Field[]): Fie
     hooks: { beforeValidate: [fillAccessToken] },
   }
   return [
-    ...afterAmount(mapFields(defaults, (field) => statusField(locked(field))), breakdownRow(currenciesConfig, readOnly), linePricesField({ access: { update: nobody } } as Partial<Field>)),
+    ...afterAmount(
+      mapFields(defaults, (field) => statusField(locked(field))),
+      breakdownRow(currenciesConfig, readOnly),
+      linePricesField({
+        access: { update: nobody },
+        label: { en: 'Lines as charged (cents)', fr: 'Lignes facturées (centimes)' },
+        admin: { readOnly: true, position: 'sidebar' },
+      } as Partial<Field>),
+    ),
     ...attention,
     token,
+    settlementKey,
   ]
 }
 
@@ -103,4 +124,5 @@ export const ordersOverride =
       defaultColumns: ['id', 'createdAt', 'customerEmail', 'amount', 'status', 'needsAttention'],
       listSearchableFields: ['customerEmail'],
     },
+    hooks: { ...defaultCollection.hooks, beforeChange: [...(defaultCollection.hooks?.beforeChange ?? []), keepCreatedAt] },
   })

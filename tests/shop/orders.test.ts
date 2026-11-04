@@ -131,14 +131,34 @@ describeWithShop('orders from payments', () => {
       const product = await publish({ title: `Course ${n}`, inventory: 5 })
       const { id } = await startedPayment([{ product: product.id, quantity: 1 }])
       stripe.pay(id)
-      const results = await Promise.allSettled(Array.from({ length: n }, (_, i) => (i % 2 ? webhook(succeededEvent(id)) : finalize.finalizePayment(payload, id))))
-      // The plugin's losing calls wait 500 ms for the winner; a slow one answers 500 and is retried.
-      expect(results.some((result) => result.status === 'fulfilled')).toBe(true)
-      expect(await ordersOf(id)).toHaveLength(1)
+      const calls = Array.from({ length: n }, (_, i) => (i % 2 ? webhook(succeededEvent(id)) : finalize.finalizePayment(payload, id).then(({ order }) => order.id)))
+      const results = await Promise.allSettled(calls)
+      const [order, ...more] = await ordersOf(id)
+      expect(more).toHaveLength(0)
+      // Every call either got the one order (a webhook: 200) or lost the plugin's 500 ms wait for
+      // the winner (a webhook: 500, which Stripe retries; a direct call: PaymentNotSettledError).
+      for (const [i, result] of results.entries()) {
+        if (i % 2) expect([200, 500], `webhook ${i}`).toContain(result.status === 'fulfilled' ? result.value : 'rejected')
+        else if (result.status === 'fulfilled') expect(result.value, `call ${i}`).toBe(order!.id)
+        else expect(result.reason, `call ${i}`).toBeInstanceOf(finalize.PaymentNotSettledError)
+      }
+      const settledCalls = results.filter((result, i) => result.status === 'fulfilled' && (i % 2 ? result.value === 200 : true))
+      expect(settledCalls.length).toBeGreaterThanOrEqual(1)
       expect(await stock(product.id)).toBe(4)
       // Every call after the race gets the same order.
+      expect((await finalize.finalizePayment(payload, id)).order.id).toBe(order!.id)
+    })
+
+    it('answers 200 to a late webhook for an order the owner deleted, and changes nothing', async () => {
+      const product = await publish({ title: 'Supprimée', inventory: 5 })
+      const { id } = await startedPayment([{ product: product.id, quantity: 1 }])
+      stripe.pay(id)
       const { order } = await finalize.finalizePayment(payload, id)
-      expect(order.id).toBe((await ordersOf(id))[0]!.id)
+      await payload.delete({ collection: 'orders', id: order.id, overrideAccess: true })
+      await expect(finalize.finalizePayment(payload, id)).rejects.toThrow(finalize.OrderDeletedError)
+      expect(await webhook(succeededEvent(id))).toBe(200)
+      expect(await ordersOf(id)).toHaveLength(0)
+      expect(await stock(product.id)).toBe(4)
     })
 
     it('ignores a payment the shop did not start, and refuses to settle one that is not paid', async () => {
@@ -226,6 +246,21 @@ describeWithShop('orders from payments', () => {
       await expect(payload.update({ collection: 'products', id: product.id, data: { title: 'Épuisé (bientôt)' }, overrideAccess: true })).resolves.toBeTruthy()
     })
 
+    it('never lets a late confirmation flag its own order for another one’s oversell', async () => {
+      const product = await publish({ title: 'Tardive', inventory: 5 })
+      const { cart, id } = await startedPayment([{ product: product.id, quantity: 1 }])
+      stripe.pay(id)
+      const { order } = await finalize.finalizePayment(payload, id)
+      // Another payment is taking the stock below 0 right now; this one's confirmation comes again
+      // (the plugin's public confirm-order, a browser coming back).
+      await setStock(product.id, -1)
+      const late = await payments.confirmStripePayment(payload, { cart, customerEmail: 'camille@example.com', paymentIntentId: id })
+      expect(late).toMatchObject({ ok: true, orderId: order.id })
+      expect(await payload.findByID({ collection: 'orders', id: order.id, overrideAccess: true })).toMatchObject({ needsAttention: false })
+      // The other payment's own winning call sets it back.
+      await setStock(product.id, 4)
+    })
+
     it('makes both orders when two tabs paid for one cart (two payments are two orders)', async () => {
       const product = await publish({ title: 'Deux onglets', inventory: 10 })
       const first = await startedPayment([{ product: product.id, quantity: 1 }])
@@ -265,6 +300,52 @@ describeWithShop('orders from payments', () => {
       const stored = await payload.findByID({ collection: 'orders', id: order.id, overrideAccess: true })
       expect(stored.accessToken).toBe(order.accessToken)
       await payload.update({ collection: 'orders', id: order.id, data: { status: 'refunded' }, overrideAccess: false, user: asStaff() })
+    })
+
+    it('keeps an order’s date and status: an update can’t rewrite or clear them', async () => {
+      const order = await paidOrder()
+      const updated = await payload.update({
+        collection: 'orders',
+        id: order.id,
+        data: { createdAt: '2000-01-01T00:00:00.000Z', status: null } as unknown as Order,
+        overrideAccess: false,
+        user: asStaff(),
+      })
+      expect(updated.createdAt).toBe(order.createdAt)
+      expect(updated.status).toBe('processing')
+    })
+
+    it('refuses to delete for good a product that an order bought or a payment is for; the trash still works', async () => {
+      const bought = await publish({ title: 'Achetée', inventory: 5 })
+      const { id } = await startedPayment([{ product: bought.id, quantity: 1 }])
+      const pending = await publish({ title: 'En cours', inventory: 5 })
+      await startedPayment([{ product: pending.id, quantity: 1 }])
+      stripe.pay(id)
+      await finalize.finalizePayment(payload, id)
+      for (const product of [bought, pending]) {
+        await expect(payload.delete({ collection: 'products', id: product.id, overrideAccess: false, user: asStaff() }), String(product.title)).rejects.toThrow(/trash/)
+        const rest = await handleEndpoints({ config: payload.config, path: `/api/products/${product.id}`, request: new Request(`http://localhost/api/products/${product.id}`, { method: 'DELETE' }) })
+        expect(rest.status).toBeGreaterThanOrEqual(400)
+        expect(await stock(product.id)).not.toBeUndefined()
+      }
+      // Moving it to the trash keeps its row, and the order its line.
+      await payload.update({ collection: 'products', id: bought.id, data: { deletedAt: new Date().toISOString() }, overrideAccess: false, user: asStaff() })
+      expect((await ordersOf(id))[0]!.items).toEqual([expect.objectContaining({ product: bought.id })])
+      // A product nobody bought still goes.
+      const unsold = await publish({ title: 'Jamais vendue', inventory: 5 })
+      await expect(payload.delete({ collection: 'products', id: unsold.id, overrideAccess: false, user: asStaff() })).resolves.toBeTruthy()
+    })
+
+    it('refuses a guest’s delete of a cart whose payment is being settled', async () => {
+      const product = await publish({ title: 'Panier gardé', inventory: 5 })
+      const { cart } = await startedPayment([{ product: product.id, quantity: 1 }])
+      const res = await handleEndpoints({
+        config: payload.config,
+        path: `/api/carts/${cart.id}`,
+        request: new Request(`http://localhost/api/carts/${cart.id}?secret=${cart.secret}`, { method: 'DELETE' }),
+      })
+      expect(res.status).toBe(400)
+      expect(await payload.findByID({ collection: 'carts', id: cart.id, overrideAccess: true, disableErrors: true })).not.toBeNull()
     })
 
     it('lets nobody create an order by hand, and only the owner delete one', async () => {

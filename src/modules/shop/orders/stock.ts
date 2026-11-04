@@ -28,13 +28,11 @@ const notes = {
   fr: {
     shortfall: (title: string, quantity: number, left: number) =>
       `Stock insuffisant à la confirmation du paiement : ${quantity} × ${title} commandés, ${left} en stock.`,
-    gone: (id: string) => `Le produit ${id} n’existe plus : vérifiez la commande avant de l’expédier.`,
     clamped: (title: string) => `Le stock de ${title} est passé sous 0 avec cette commande : il a été remis à 0.`,
   },
   en: {
     shortfall: (title: string, quantity: number, left: number) =>
       `Not enough stock when the payment was confirmed: ${quantity} × ${title} ordered, ${left} in stock.`,
-    gone: (id: string) => `Product ${id} no longer exists: check the order before shipping it.`,
     clamped: (title: string) => `Stock of ${title} went below 0 with this order: it was set back to 0.`,
   },
 }
@@ -73,7 +71,8 @@ async function titles(req: PayloadRequest, ids: string[]): Promise<Map<string, {
 
 /**
  * What the stock left can't cover, as notes for the order (empty when all is fine). Stock that
- * isn't tracked (empty) covers anything. Reads only.
+ * isn't tracked (empty) covers anything. Reads only. (A product an unsettled payment is for can't
+ * be deleted for good: collections/keepReferenced.ts.)
  */
 export async function stockShortfalls(req: PayloadRequest, lines: readonly Line[]): Promise<string[]> {
   const wanted = quantities(lines)
@@ -82,15 +81,15 @@ export async function stockShortfalls(req: PayloadRequest, lines: readonly Line[
   const found: string[] = []
   for (const [id, quantity] of wanted) {
     const product = products.get(id)
-    if (!product) found.push(t.gone(id))
-    else if (product.inventory != null && product.inventory < quantity) found.push(t.shortfall(product.title, quantity, Math.max(0, product.inventory)))
+    if (product && product.inventory != null && product.inventory < quantity) found.push(t.shortfall(product.title, quantity, Math.max(0, product.inventory)))
   }
   return found
 }
 
 /**
  * Sets back to 0 the stock of every product of `lines` that is below 0, and flags `order` for each
- * one this call set back. Never throws: it runs after the order exists.
+ * one this call set back. Never throws: it runs after the order exists. Called only by the call
+ * that created `order`, so a late confirmation never flags its order for another one's oversell.
  */
 export async function clampOversold(req: PayloadRequest, lines: readonly Line[], order: { id?: unknown; attentionNote?: unknown }): Promise<void> {
   try {

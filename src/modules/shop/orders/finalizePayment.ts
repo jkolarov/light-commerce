@@ -18,6 +18,11 @@ export class UnknownPaymentError extends Error {
   override name = 'UnknownPaymentError'
 }
 
+/** The payment was settled, but its order was deleted since (by the owner). Nothing to retry. */
+export class OrderDeletedError extends Error {
+  override name = 'OrderDeletedError'
+}
+
 /** `confirm-order` gave no order: not paid, or settlement still running elsewhere. Worth retrying. */
 export class PaymentNotSettledError extends Error {
   override name = 'PaymentNotSettledError'
@@ -33,15 +38,19 @@ const idOf = (value: unknown) => (value && typeof value === 'object' ? (value as
 
 /**
  * The order of the PaymentIntent `paymentIntentId`, created if it doesn't exist yet. Throws
- * `UnknownPaymentError` for a payment the shop didn't start, `PaymentNotSettledError` when
- * Stripe's payment isn't settled (or another call is settling it right now).
+ * `UnknownPaymentError` for a payment the shop didn't start, `OrderDeletedError` when its order was
+ * deleted since, and `PaymentNotSettledError` when Stripe's payment isn't settled (or another call
+ * is settling it right now).
  */
 export async function finalizePayment(payload: Payload, paymentIntentId: string): Promise<{ order: Order }> {
   const transaction = await findPaymentTransaction(payload, paymentIntentId)
   if (!transaction) throw new UnknownPaymentError(`No transaction for PaymentIntent ${paymentIntentId}.`)
 
-  const settled = transaction.status === 'succeeded' && idOf(transaction.order)
-  let order = settled ? await payload.findByID({ collection: 'orders', id: settled as number, depth: 0, overrideAccess: true, disableErrors: true }) : null
+  // Settled already. Its order may have been deleted since (the link then goes empty too).
+  const settled = transaction.status === 'succeeded'
+  const settledOrderId = idOf(transaction.order)
+  let order = settled && settledOrderId ? await payload.findByID({ collection: 'orders', id: settledOrderId as number, depth: 0, overrideAccess: true, disableErrors: true }) : null
+  if (settled && !order) throw new OrderDeletedError(`PaymentIntent ${paymentIntentId} was settled, and its order was deleted since.`)
 
   if (!order) {
     if (transaction.status === 'expired') {

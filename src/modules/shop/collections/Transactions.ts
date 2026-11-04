@@ -12,7 +12,17 @@ export const transactionsOverride =
   (currenciesConfig: CurrenciesConfig): CollectionOverride =>
   ({ defaultCollection }) => ({
     ...defaultCollection,
-    fields: afterAmount(defaultCollection.fields, breakdownRow(currenciesConfig), linePricesField()),
+    fields: [
+      ...afterAmount(defaultCollection.fields, breakdownRow(currenciesConfig), linePricesField()),
+      // Set once by the reconcile job (orders/reconcile.ts) when a payment can never be settled
+      // here; the job doesn't look at it again.
+      {
+        name: 'attentionNote',
+        type: 'textarea',
+        label: { en: 'What needs attention', fr: 'Ce qui est à vérifier' },
+        admin: { position: 'sidebar', condition: (data) => Boolean(data?.attentionNote) },
+      },
+    ],
     access: { ...defaultCollection.access, create: nobody, update: nobody, delete: nobody },
     admin: { ...defaultCollection.admin, group: false },
     versions: false,

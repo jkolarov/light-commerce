@@ -10,15 +10,22 @@ export type PaymentOutcome =
   | 'processing'
   /** Not paid: declined, abandoned or cancelled. The visitor can try again; nothing was charged. */
   | 'failed'
+  /** Stripe doesn't know this PaymentIntent (another Stripe account, or a made-up id). */
+  | 'unknown'
 
 /**
- * Asks Stripe where a PaymentIntent stands. Used only when the plugin's `confirm-order` did not
- * create the order, to tell "payment received, order pending" from "not paid". Throws when Stripe
- * can't be reached or doesn't know the PaymentIntent.
+ * Asks Stripe where a PaymentIntent stands: for the browser's return, to tell "payment received"
+ * from "not paid", and for the reconcile job. Throws when Stripe can't be reached.
  */
 export async function paymentOutcome(paymentIntentId: string, settings: StripeSettings = readStripeSettings()): Promise<PaymentOutcome> {
   const stripe = new Stripe(settings.secretKey, { appInfo: { name: 'light-commerce' } })
-  const { status } = await stripe.paymentIntents.retrieve(paymentIntentId)
+  let status: Stripe.PaymentIntent.Status
+  try {
+    ;({ status } = await stripe.paymentIntents.retrieve(paymentIntentId))
+  } catch (error) {
+    if (error instanceof Stripe.errors.StripeInvalidRequestError && error.code === 'resource_missing') return 'unknown'
+    throw error
+  }
   if (status === 'succeeded') return 'succeeded'
   if (status === 'processing') return 'processing'
   return 'failed'
