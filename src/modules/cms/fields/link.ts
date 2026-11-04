@@ -53,7 +53,7 @@ export function linkField(name = 'link'): Field {
         relationTo: 'pages',
         admin: { condition: (_, siblingData) => siblingData?.type !== 'url' },
         validate: (value: unknown, { siblingData }: { siblingData: { type?: string } }) =>
-          siblingData?.type === 'url' || value ? true : 'Choose a page.',
+          siblingData?.type === 'url' || value ? true : 'This page no longer exists. Choose another page or remove this item.',
       },
       {
         name: 'url',

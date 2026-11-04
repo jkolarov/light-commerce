@@ -1,4 +1,4 @@
-import type { Payload } from 'payload'
+import { handleEndpoints, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { getLightConfig } from '@/config'
@@ -51,14 +51,21 @@ describe.skipIf(!getLightConfig().modules.cms)('header and footer menus', () => 
         ],
       },
     })
+    // English: only the first and last labels are translated; the others fall back to French.
+    const current = (await payload.findGlobal({ slug: 'header', locale: 'fr', overrideAccess: true })).items!
     await payload.updateGlobal({
       slug: 'header',
       locale: 'en',
       overrideAccess: true,
-      data: { items: (await payload.findGlobal({ slug: 'header', locale: 'en', overrideAccess: true, fallbackLocale: false })).items!.map((item, i) => ({
-        ...item,
-        link: { ...item.link, label: ['About'][i] ?? undefined, ...(i === 4 ? { url: '/en/shop', label: 'Shop' } : {}) },
-      })) },
+      data: {
+        items: [
+          { id: current[0]!.id, link: { label: 'About' } },
+          { id: current[1]!.id },
+          { id: current[2]!.id },
+          { id: current[3]!.id },
+          { id: current[4]!.id, link: { label: 'Shop', url: '/en/shop' } },
+        ],
+      },
     })
     await payload.updateGlobal({
       slug: 'footer',
@@ -81,12 +88,33 @@ describe.skipIf(!getLightConfig().modules.cms)('header and footer menus', () => 
     ])
   })
 
-  it('returns English labels and slugs, falling back to French where English is missing', async () => {
+  it('returns the English label and slug when they exist', async () => {
     const en = await nav.getHeaderNav('en')
     expect(en[0]).toEqual({ label: 'About', href: '/en/about' })
-    expect(en).toContainEqual({ label: 'Externe', href: 'https://example.com/x' })
     expect(en).toContainEqual({ label: 'Shop', href: '/en/shop' })
+  })
+
+  it('falls back to the French label when the English one is missing', async () => {
+    const en = await nav.getHeaderNav('en')
+    expect(en).toContainEqual({ label: 'Externe', href: 'https://example.com/x' })
     expect(en).toContainEqual({ label: 'Public', href: '/en/public' })
+  })
+
+  it('leaves out a page that is published in French but not in English', async () => {
+    const frOnly = await page('Seul FR', 'seul-fr')
+    await payload.updateGlobal({
+      slug: 'footer', locale: 'fr', overrideAccess: true,
+      data: { items: [{ link: { type: 'page', page: aboutId, label: 'À propos' } }, { link: { type: 'page', page: frOnly.id, label: 'Seul FR' } }] },
+    })
+    expect((await nav.getFooterNav('fr')).map((i) => i.label)).toEqual(['À propos', 'Seul FR'])
+    expect((await nav.getFooterNav('en')).map((i) => i.href)).toEqual(['/en/about'])
+  })
+
+  it('returns the footer text, with French fallback, or null when empty', async () => {
+    expect(await nav.getFooterText('fr')).toBe('Fait main')
+    expect(await nav.getFooterText('en')).toBe('Fait main')
+    await payload.updateGlobal({ slug: 'footer', locale: 'fr', overrideAccess: true, data: { text: '', items: [] } })
+    expect(await nav.getFooterText('fr')).toBeNull()
   })
 
   it('leaves out links to unpublished pages and to deleted pages', async () => {
@@ -112,7 +140,21 @@ describe.skipIf(!getLightConfig().modules.cms)('header and footer menus', () => 
     }
   })
 
+  it('answers an anonymous REST read with ?draft=true without draft data', async () => {
+    const res = await handleEndpoints({
+      config: payload.config,
+      path: '/api/globals/header',
+      request: new Request('http://localhost/api/globals/header?draft=true&depth=2&locale=fr'),
+    })
+    expect(res.status).toBe(200)
+    const text = await res.text()
+    expect(text).toContain('Public title')
+    expect(text).not.toContain('DRAFT TITLE')
+    expect(text).not.toContain('draft-slug')
+  })
+
   it('lets anyone read and only staff or owners edit', async () => {
+    await payload.updateGlobal({ slug: 'footer', locale: 'fr', overrideAccess: true, data: { text: 'Fait main', items: [] } })
     await expect(payload.findGlobal({ slug: 'footer', overrideAccess: false })).resolves.toMatchObject({ text: 'Fait main' })
     await expect(payload.updateGlobal({ slug: 'footer', data: { text: 'x' }, overrideAccess: false })).rejects.toThrow()
     await expect(
@@ -120,8 +162,9 @@ describe.skipIf(!getLightConfig().modules.cms)('header and footer menus', () => 
     ).resolves.toMatchObject({ text: 'Mis à jour' })
   })
 
-  it('allows at most 7 header links and keeps no versions', async () => {
+  it('accepts exactly 7 header links, refuses 8, and keeps no versions', async () => {
     const item = { link: { type: 'url', url: '/fr/shop', label: 'x' } } as const
+    await expect(payload.updateGlobal({ slug: 'header', locale: 'fr', overrideAccess: true, data: { items: Array(7).fill(item) } })).resolves.toBeTruthy()
     await expect(payload.updateGlobal({ slug: 'header', locale: 'fr', overrideAccess: true, data: { items: Array(8).fill(item) } })).rejects.toThrow()
     await expect(payload.findGlobalVersions({ slug: 'header', overrideAccess: true })).rejects.toThrow()
   })

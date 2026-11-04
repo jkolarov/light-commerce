@@ -19,6 +19,12 @@ export async function getFooterNav(locale: Locale): Promise<NavItem[]> {
   return readNav({ payload: await getPayload({ config }), global: 'footer', locale })
 }
 
+/** Footer short text for one locale, or `null` when there is none (S11). */
+export async function getFooterText(locale: Locale): Promise<string | null> {
+  const footer = await (await getPayload({ config })).findGlobal({ slug: 'footer', locale, depth: 0, overrideAccess: false })
+  return footer.text?.trim() || null
+}
+
 /** Sitemap entries for the published pages (S12). */
 export async function getSitemapEntries(): Promise<SitemapEntry[]> {
   return []
