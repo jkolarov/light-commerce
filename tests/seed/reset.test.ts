@@ -45,7 +45,7 @@ describe.skipIf(!(modules.cms && modules.shop))('the nightly reset', () => {
     addedPage: Page
     paidOrder: number
     lostWebhook: { transaction: number; paymentIntentId: string }
-    stale: { transaction: number; cart: number }
+    stale: { transaction: number; cart: number; paymentIntentId: string }
     inProgress: { transaction: number; cart: number; paymentIntentId: string }
     abandonedCart: number
   }
@@ -127,6 +127,10 @@ describe.skipIf(!(modules.cms && modules.shop))('the nightly reset', () => {
 
   it('deletes orders, carts and transactions, except a payment in progress with its cart', async () => {
     expect(await all('orders')).toEqual([])
+    // The abandoned checkout was cancelled at Stripe before its transaction went: no tab left open
+    // can pay it now. The one in progress was left alone.
+    expect(stripe.intents.get(day.stale.paymentIntentId)?.status).toBe('canceled')
+    expect(stripe.intents.get(day.inProgress.paymentIntentId)?.status).toBe('requires_payment_method')
     expect(await all('transactions')).toEqual([day.inProgress.transaction])
     expect(await all('carts')).toEqual([day.inProgress.cart])
     expect(summary.kept.transactions).toEqual([day.inProgress.transaction])
@@ -165,6 +169,36 @@ describe.skipIf(!(modules.cms && modules.shop))('the nightly reset', () => {
     expect(await all('transactions')).toEqual([])
     expect(await product('en-vente-cette-nuit')).toBeUndefined()
     expect(next.seed.owner).toBe('kept')
+  }, 120_000)
+
+  it('keeps a payment it can’t check at Stripe, with its cart, and lets it go the next night', async () => {
+    const unchecked = await startPayment([{ product: day.demoProduct.id, quantity: 1 }])
+    await touchedAt(unchecked.transaction, hoursAgo(3))
+    const later = new Date(Date.now() + 3 * 3_600_000)
+    stripe.unreachable = true
+    try {
+      await resetDemo(payload, { demoDir: DEMO_DIR, owner: { email: owner.email }, now: later, log: () => {} })
+    } finally {
+      stripe.unreachable = false
+    }
+    expect(await all('transactions')).toContain(unchecked.transaction)
+    expect(await all('carts')).toContain(unchecked.cart)
+    await resetDemo(payload, { demoDir: DEMO_DIR, owner: { email: owner.email }, now: later, log: () => {} })
+    expect(await all('transactions')).not.toContain(unchecked.transaction)
+    expect(stripe.intents.get(unchecked.paymentIntentId)?.status).toBe('canceled')
+  }, 120_000)
+
+  it('deletes only what was made before it started, never what a visitor makes while it runs', async () => {
+    const before = await newCart([{ product: day.demoProduct.id, quantity: 1 }])
+    const startedAt = new Date()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    const during = await startPayment([{ product: day.demoProduct.id, quantity: 1 }])
+    await resetDemo(payload, { demoDir: DEMO_DIR, owner: { email: owner.email }, now: startedAt, log: () => {} })
+    const carts = await all('carts')
+    expect(carts).not.toContain(before.id)
+    expect(carts).toContain(during.cart)
+    expect(await all('transactions')).toContain(during.transaction)
+    expect(stripe.intents.get(during.paymentIntentId)?.status).toBe('requires_payment_method')
   }, 120_000)
 
   it('deletes nothing when the owner account isn’t there: it never creates one without a password', async () => {

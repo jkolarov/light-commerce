@@ -14,7 +14,8 @@ import type { DemoContent } from './demo'
 
 const SHOWN = 5
 
-type ForeignCheck = { collection: CollectionSlug; field: string; where: Where; trash?: boolean }
+/** `locale`: the demo names pages by their French slug, so `where` is read in French. */
+type ForeignCheck = { collection: CollectionSlug; field: string; where: Where; locale: 'fr'; trash?: boolean }
 
 /** For each collection the seed writes: how to find its documents the demo doesn't have. */
 export function foreignChecks(ctx: SeedContext, demo: DemoContent): ForeignCheck[] {
@@ -29,6 +30,7 @@ export function foreignChecks(ctx: SeedContext, demo: DemoContent): ForeignCheck
     collection,
     field,
     where: { or: [{ [field]: { not_in: known } }, { [field]: { exists: false } }] },
+    locale: 'fr' as const,
     ...(trash ? { trash } : {}),
   }))
 }
@@ -37,11 +39,11 @@ export function foreignChecks(ctx: SeedContext, demo: DemoContent): ForeignCheck
 export async function findForeignContent(ctx: SeedContext, demo: DemoContent): Promise<string[]> {
   const { payload } = ctx
   const lines: string[] = []
-  for (const { collection, field, where, trash } of foreignChecks(ctx, demo)) {
+  for (const { collection, field, where, locale, trash } of foreignChecks(ctx, demo)) {
     const { docs, totalDocs } = await payload.find({
       collection,
       where,
-      locale: 'fr',
+      locale,
       limit: SHOWN,
       depth: 0,
       overrideAccess: true,
