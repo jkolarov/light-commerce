@@ -5,9 +5,19 @@
  */
 export async function stopIfConfigIsBroken(): Promise<void> {
   try {
+    const { MODULES_OVERRIDE_ENV, refuseModulesOverrideInProduction } = await import('./modulesOverride')
+    refuseModulesOverrideInProduction()
     // A dynamic import: importing the config runs light.config.ts, which throws when it is broken.
     const { getLightConfig } = await import('./index')
-    getLightConfig()
+    const { modules } = getLightConfig()
+    const override = process.env[MODULES_OVERRIDE_ENV]
+    if (override?.trim()) {
+      const on = Object.entries(modules).flatMap(([name, isOn]) => (isOn ? [name] : []))
+      console.warn(
+        `light.config.ts: modules come from ${MODULES_OVERRIDE_ENV}=${override} (CI and tests only), ` +
+          `not from light.config.ts. On: ${on.join(', ')}.`,
+      )
+    }
   } catch (error) {
     if (!(error instanceof Error) || error.name !== 'LightConfigError') throw error
     console.error(`\n${error.message}\n`)

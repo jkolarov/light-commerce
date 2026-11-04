@@ -29,6 +29,24 @@ export function parseModulesOverride(value: string | undefined): LightConfig['mo
   return { cms: names.includes('cms'), shop: names.includes('shop') }
 }
 
+/**
+ * Refuses the override on a production server (`NODE_ENV=production` outside CI): there it would
+ * switch a module off without a word, and on a shop, payments would create no orders. Checked at
+ * server startup only (src/config/startup.ts): `next build` also runs with `NODE_ENV=production`,
+ * and CI builds each setup with the override.
+ */
+export function refuseModulesOverrideInProduction(env: NodeJS.ProcessEnv = process.env): void {
+  const value = env[MODULES_OVERRIDE_ENV]
+  if (env.NODE_ENV !== 'production' || !value?.trim() || env.CI) return
+  throw new LightConfigError(
+    [
+      `${MODULES_OVERRIDE_ENV}: set to ${JSON.stringify(value)} on a production server, but it is for CI and tests only. ` +
+        'Unset it, and switch modules in light.config.ts.',
+    ],
+    `The ${MODULES_OVERRIDE_ENV} environment variable`,
+  )
+}
+
 /** The config with the override's modules, checked again (the shop still needs its section). */
 export function applyModulesOverride(config: LightConfig, value: string | undefined): LightConfig {
   const modules = parseModulesOverride(value)
