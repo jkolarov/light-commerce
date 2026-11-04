@@ -32,8 +32,8 @@ export async function CheckoutPage({ locale, paymentFailed }: { locale: Locale; 
   const cart = await currentCart(locale)
   if (!cart || cart.lines.length === 0 || !cart.canCheckout) redirect(cartPath(locale))
   const { site, theme } = getLightConfig()
+  // Without a publishable key the form says card payment is unavailable; startup warns once.
   const { publishableKey } = readStripeSettings()
-  if (!publishableKey) console.error('Shop: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set: the checkout cannot show the card form.')
   return (
     <CheckoutView
       cart={cart}

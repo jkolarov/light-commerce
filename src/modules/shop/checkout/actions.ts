@@ -22,6 +22,8 @@ export type StartPaymentResult =
   | { ok: false; problem: 'invalid'; fields: Partial<Record<DetailField, FieldProblem>> }
   /** The cart is gone, can't be bought as it is (stock, a product off sale), or costs another total. */
   | { ok: false; problem: 'cartChanged' }
+  /** Too many different products for one Stripe payment (a cart from before the 8-line rule). */
+  | { ok: false; problem: 'tooManyLines' }
   | { ok: false; problem: 'failed' }
 
 const input = z.object({ details: z.record(z.string(), z.unknown()), expectedTotal: z.number().int().min(0) })
@@ -51,6 +53,7 @@ export async function startPayment(raw: { details: Record<string, unknown>; expe
     const started = await startStripePayment(payload, { cart: ref, customerEmail: details.email, address: toPaymentAddress(details), expectedTotal })
     if (started.ok) return { ok: true, clientSecret: started.clientSecret }
     if (started.reason === 'cartChanged') return cartChanged
+    if (started.reason === 'tooManyLines') return { ok: false, problem: 'tooManyLines' }
     // The plugin checks stock itself before the wrapper runs, and answers 400: a unit sold meanwhile.
     const now = await findGuestCart(payload, ref)
     if (!now || !(await priceGuestCart(payload, now)).canCheckout) return cartChanged

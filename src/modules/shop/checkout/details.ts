@@ -1,5 +1,6 @@
 import type { ShopConfig } from '@/config/schema'
 
+import { STRIPE_METADATA_LIMIT } from '../payments/stripe/metadata'
 import type { PaymentAddress } from '../payments/stripe/payments'
 import { isShippingCountry } from '../shipping/calculate'
 
@@ -43,14 +44,10 @@ export const OPTIONAL_FIELDS: ReadonlySet<DetailField> = new Set(['phone', 'addr
 export type FieldProblem = 'required' | 'invalid' | 'tooLong' | 'notShipped'
 
 /**
- * Stripe keeps the shipping address in the PaymentIntent's metadata, where a value holds at most
- * 500 characters (the ecommerce plugin stores it there as JSON, and the order reads it back).
- */
-export const STRIPE_METADATA_LIMIT = 500
-
-/**
- * The most characters each field may hold. The address fields add up to well under
- * `STRIPE_METADATA_LIMIT` once written as JSON; a final check covers characters JSON escapes.
+ * The most characters each field may hold. Stripe keeps the shipping address in the
+ * PaymentIntent's metadata as JSON (the order reads it back), at most `STRIPE_METADATA_LIMIT`
+ * characters: the address fields add up to well under that, and a final check covers characters
+ * JSON escapes.
  */
 export const MAX_LENGTH: Record<DetailField, number> = {
   email: 254,

@@ -3,11 +3,11 @@ import type { PaymentAdapter } from '@payloadcms/plugin-ecommerce/types'
 import type { Field } from 'payload'
 
 import { readStripeSettings, type StripeSettings } from './env'
-import { withServerPricing } from './wrap'
+import { withCheckoutRules } from './wrap'
 
 // The shop's Stripe payment method: the ecommerce plugin's built-in Stripe adapter, wrapped
 // (./wrap.ts). This folder is the only place that talks to Stripe (design 4.8; ESLint enforces it).
-// Card fields are drawn by Stripe's Payment Element in the browser (./PaymentElement.tsx): card
+// Card fields are drawn by Stripe's Payment Element in the browser (./usePaymentElement.ts): card
 // data never reaches this server.
 //
 // The plugin registers the adapter's endpoints under /api/payments/stripe: `initiate`,
@@ -27,5 +27,5 @@ export function stripePaymentMethod(settings: StripeSettings = readStripeSetting
     webhooks: {},
     groupOverrides: { fields: ({ defaultFields }) => defaultFields.map(uniquePaymentIntent) },
   })
-  return withServerPricing(adapter)
+  return withCheckoutRules(adapter)
 }

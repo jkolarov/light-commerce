@@ -3,7 +3,7 @@ import { createPayloadRequest, type Payload } from 'payload'
 import type { Transaction } from '@/payload-types'
 
 import type { CartRef } from '../../cart/load'
-import { checkoutContext, CHECKOUT_CONTEXT, type CheckoutContext } from './wrap'
+import { checkoutContext, CHECKOUT_CONTEXT, type CheckoutContext, type PaymentRefusal } from './wrap'
 
 // What the checkout asks of Stripe, through the ecommerce plugin's own endpoints rather than
 // around them: `initiate` (reads the cart by id and secret, checks stock, then runs the wrapped
@@ -44,8 +44,8 @@ export type PaymentAddress = {
 
 export type PaymentStart =
   | { ok: true; clientSecret: string; paymentIntentId: string }
-  /** `cartChanged`: the cart can't be bought as it is, or costs another total than the one shown. */
-  | { ok: false; reason: 'cartChanged' | 'failed'; status: number; message?: string }
+  /** Why the wrapper refused (`PaymentRefusal`), or `failed` for anything else. */
+  | { ok: false; reason: PaymentRefusal | 'failed'; status: number; message?: string }
 
 /**
  * Starts a Stripe payment for the guest's cart: a PaymentIntent for the cart's price today plus

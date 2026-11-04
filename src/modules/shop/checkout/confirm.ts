@@ -62,22 +62,29 @@ export async function confirmCheckout(payload: Payload, input: { paymentIntentId
   const transaction = await findPaymentTransaction(payload, paymentIntentId)
   if (!transaction) return { kind: 'unknown' }
 
-  if (cart && (await holdsCart(payload, cart, transaction.cart))) {
-    if (transaction.status === 'succeeded' && transaction.order) {
-      const orderId = typeof transaction.order === 'object' ? transaction.order.id : transaction.order
-      return { kind: 'order', orderId, accessToken: await accessTokenOf(payload, orderId) }
-    }
-    const confirmed = await confirmStripePayment(payload, { cart, customerEmail: transaction.customerEmail ?? '', paymentIntentId })
-    if (confirmed.ok) return { kind: 'order', orderId: confirmed.orderId, accessToken: confirmed.accessToken }
+  const holder = cart && (await holdsCart(payload, cart, transaction.cart)) ? cart : null
+  if (holder && transaction.status === 'succeeded' && transaction.order) {
+    const orderId = typeof transaction.order === 'object' ? transaction.order.id : transaction.order
+    return { kind: 'order', orderId, accessToken: await accessTokenOf(payload, orderId) }
   }
 
-  // No order from here: ask Stripe whether the payment went through.
+  // Stripe first: a payment that did not go through (a declined card, a cancelled bank page)
+  // never reaches the plugin's settlement.
+  let outcome: Awaited<ReturnType<typeof paymentOutcome>>
   try {
-    return (await paymentOutcome(paymentIntentId)) === 'failed' ? { kind: 'failed' } : { kind: 'received' }
+    outcome = await paymentOutcome(paymentIntentId)
   } catch (error) {
     payload.logger.error({ err: error, msg: `Shop: could not read PaymentIntent ${paymentIntentId} at Stripe` })
     return { kind: 'checking' }
   }
+  if (outcome === 'failed') return { kind: 'failed' }
+
+  if (holder && outcome === 'succeeded') {
+    const confirmed = await confirmStripePayment(payload, { cart: holder, customerEmail: transaction.customerEmail ?? '', paymentIntentId })
+    if (confirmed.ok) return { kind: 'order', orderId: confirmed.orderId, accessToken: confirmed.accessToken }
+  }
+  // Paid, or being settled by Stripe, and no order from here: the webhook creates it (S18).
+  return { kind: 'received' }
 }
 
 /**

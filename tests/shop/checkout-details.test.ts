@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { checkDetails, MAX_LENGTH, STRIPE_METADATA_LIMIT, toPaymentAddress } from '@/modules/shop/checkout/details'
+import { checkDetails, MAX_LENGTH, toPaymentAddress } from '@/modules/shop/checkout/details'
+import { STRIPE_METADATA_LIMIT } from '@/modules/shop/payments/stripe/metadata'
 
 // The visitor's contact and shipping details: the same rules in the form and on the server.
 

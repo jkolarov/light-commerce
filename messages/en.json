@@ -120,6 +120,7 @@
     "notChargedHint": "You have not been charged. Try again, with this card or another one.",
     "notPaid": "The payment did not go through.",
     "failed": "The payment could not start.",
+    "tooManyLines": "Too many different products for one payment. Remove some from your cart, then come back to checkout.",
     "fixFields": "Check the fields marked below.",
     "summary": "Your order",
     "quantity": "Quantity: {count}",

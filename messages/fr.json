@@ -120,6 +120,7 @@
     "notChargedHint": "Vous n’avez pas été débité. Réessayez, avec cette carte ou une autre.",
     "notPaid": "Le paiement n’a pas abouti.",
     "failed": "Le paiement n’a pas pu démarrer.",
+    "tooManyLines": "Trop de produits différents pour un seul paiement. Retirez-en quelques-uns du panier, puis revenez à la commande.",
     "fixFields": "Vérifiez les champs signalés ci-dessous.",
     "summary": "Votre commande",
     "quantity": "Quantité : {count}",

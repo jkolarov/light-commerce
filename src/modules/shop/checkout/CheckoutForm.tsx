@@ -111,7 +111,7 @@ export function CheckoutForm({ locale, total, currency, shipping, countries, pub
             leaving = true
             router.push(cartChangedPath(locale))
           } else if (start.problem === 'invalid') showProblems(start.fields)
-          else setPaymentError(t('failed'))
+          else setPaymentError(t(start.problem === 'tooManyLines' ? 'tooManyLines' : 'failed'))
           return
         }
         clientSecret = start.clientSecret
