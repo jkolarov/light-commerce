@@ -31,7 +31,7 @@ RUN PAYLOAD_SECRET=build-time-placeholder DATABASE_URI=file:/tmp/build.db \
 # The demo's seed and nightly reset run in it (`payload run src/seed/...`, compose files). With
 # NODE_ENV=production, as in the runner, Payload applies pending migrations (src/migrations) and
 # never pushes the schema: a database that was pushed once can't be migrated afterwards. The
-# default command applies the migrations, which the server also does on start.
+# default command applies the migrations, which the server also does when Payload initialises.
 #   docker compose run --rm schema
 FROM builder AS schema
 RUN mkdir -p /app/data/media && chown -R node:node /app/data /app/src
@@ -60,6 +60,7 @@ EXPOSE 3000
 # Node's own fetch: the slim image has no curl. /healthz never touches the database.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
-# Pending migrations (src/migrations) run when Payload initialises (prodMigrations), so a new
-# volume gets its tables on the first start. Then the server answers.
+# Pending migrations (src/migrations) run when Payload initialises (prodMigrations): on the first
+# request that needs it (not /healthz), before that request is answered. So a new volume gets its
+# tables on the first page or API call.
 CMD ["node", "server.js"]
