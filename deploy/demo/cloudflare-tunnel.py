@@ -4,7 +4,12 @@
 One dedicated, remotely-managed tunnel named `lightcommerce`, one public hostname on the
 fluxory.dev zone:
 
-  lightcommerce.fluxory.dev -> http://app:3000     (everything else: 404 at the edge)
+  lightcommerce.fluxory.dev /healthz -> http://app:3000   (DEFAULT: everything else is a 404 at the edge)
+  lightcommerce.fluxory.dev          -> http://app:3000   (with --open: the whole site)
+
+The default is healthz-only on purpose: until S26 seeds the owner account, the app's /admin
+shows Payload's create-first-user screen, so anyone could claim the demo. S26 must create the
+owner FIRST, then run this script with --open.
 
 `app` is the compose service name: cloudflared runs inside the compose network
 (deploy/demo/compose.yml), so nothing is published on the host for the tunnel. Mailpit is
@@ -18,6 +23,7 @@ Credential: CLOUDFLARE_API_TOKEN (+ CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_ZONE_ID),
 apiToken/accountID/zoneID in ~/.cloudflared/cert.pem.fluxory.
 
 Usage:
+  deploy/demo/cloudflare-tunnel.py --open     # route the whole site (only after an owner exists, S26)
   deploy/demo/cloudflare-tunnel.py --check    # read-only: list tunnels and DNS, report what would change
   deploy/demo/cloudflare-tunnel.py            # create/update, print tunnel id
   deploy/demo/cloudflare-tunnel.py --token    # ... and print the run token (TUNNEL_TOKEN in .env)
@@ -108,9 +114,12 @@ def main():
     if not t:
         t = call("POST", f"/accounts/{ACCOUNT}/cfd_tunnel", {"name": TUNNEL_NAME, "config_src": "cloudflare"})
         print(f"tunnel {TUNNEL_NAME}: created {t['id']}")
-    ingress = [{"hostname": HOST, "service": ORIGIN}, {"service": "http_status:404"}]
+    if "--open" in args:
+        ingress = [{"hostname": HOST, "service": ORIGIN}, {"service": "http_status:404"}]
+    else:  # default: only the health check is public
+        ingress = [{"hostname": HOST, "path": "^/healthz$", "service": ORIGIN}, {"service": "http_status:404"}]
     call("PUT", f"/accounts/{ACCOUNT}/cfd_tunnel/{t['id']}/configurations", {"config": {"ingress": ingress}})
-    print("ingress: " + ", ".join(f"{r.get('hostname', '*')} -> {r['service']}" for r in ingress))
+    print("ingress: " + ", ".join(f"{r.get('hostname', '*')}{r.get('path', '')} -> {r['service']}" for r in ingress))
     target = f"{t['id']}.cfargotunnel.com"
     body = {"type": "CNAME", "name": HOST, "content": target, "proxied": True, "ttl": 1,
             "comment": f"cloudflared tunnel {TUNNEL_NAME} (light-commerce demo)"}
