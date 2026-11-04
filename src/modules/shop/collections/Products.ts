@@ -127,6 +127,10 @@ export const productsOverride: CollectionOverride = ({ defaultCollection }) => (
     group: shopGroup,
     useAsTitle: 'title',
     defaultColumns: ['title', 'priceInEUR', 'inventory', '_status', 'updatedAt'],
+    description: {
+      en: 'Publish puts the product online in every language at once. Text not yet translated shows in the default language.',
+      fr: 'Publier met le produit en ligne dans toutes les langues à la fois. Un texte pas encore traduit s’affiche dans la langue par défaut.',
+    },
   },
   hooks: {
     ...defaultCollection.hooks,

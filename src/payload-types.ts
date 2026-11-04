@@ -334,6 +334,8 @@ export interface Media {
   };
 }
 /**
+ * Publish puts the page online in every language at once. Text not yet translated shows in the default language.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "pages".
  */
@@ -480,6 +482,8 @@ export interface ProductGridBlock {
   blockType: 'productGrid';
 }
 /**
+ * Publish puts the product online in every language at once. Text not yet translated shows in the default language.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "products".
  */

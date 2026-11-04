@@ -68,6 +68,7 @@ How CI switches modules, and what that means for generated files:
 - **Money is integer cents** (minor units).
 - **One installation per site.** No `organizationId` or tenant fields for now.
 - **i18n from the start.** Content is localized FR/EN with Payload localization. Public UI strings go in `messages/{fr,en}.json`.
+- **Pages and products publish in every language at once.** The admin's Publish button names the language on screen, but core's `publishInEveryLocale` hook (`src/core/collections/publishEverywhere.ts`) publishes every language, each with its latest saved text; text not translated yet falls back to the default language. "Unpublish in English" still takes one language offline until the next publish (a page's address there then redirects to that language's home page). A new collection with localized drafts uses the same hook.
 - **Keep it light.** Think twice before adding a dependency. It must run self-hosted in Docker, with no platform-only APIs.
 - **Small files and clear names**, so an agent can find and change one thing without reading everything.
 - **Tests guard the config.** A broken `light.config.ts` fails a test and fails startup with a clear message, never a page in production.
