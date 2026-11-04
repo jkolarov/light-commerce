@@ -1,0 +1,72 @@
+import type { CollectionConfig, TextFieldSingleValidation } from 'payload'
+
+import { isStaffOrOwner, publishedOrStaff } from '@/core/access'
+import { forcePublishedForPublic, readVersions } from '@/core/access/drafts'
+
+import { cmsBlocks } from '../blocks'
+import { requiredInDefaultLocale } from '../fields/requiredInDefaultLocale'
+import { HOME_SLUG, RESERVED_SLUGS } from '../fields/slugs'
+import { slugify } from '../fields/slugify'
+
+export const Pages: CollectionConfig = {
+  slug: 'pages',
+  access: {
+    read: publishedOrStaff,
+    create: isStaffOrOwner,
+    update: isStaffOrOwner,
+    delete: isStaffOrOwner,
+    readVersions,
+  },
+  hooks: { beforeOperation: [forcePublishedForPublic] },
+  admin: {
+    useAsTitle: 'title',
+    defaultColumns: ['title', 'slug', '_status', 'updatedAt'],
+  },
+  versions: { drafts: true },
+  fields: [
+    { name: 'title', type: 'text', localized: true, validate: requiredInDefaultLocale },
+    {
+      name: 'slug',
+      type: 'text',
+      localized: true,
+      unique: true,
+      index: true,
+      admin: { position: 'sidebar', description: 'The address of the page. Made from the title when left empty.' },
+      hooks: {
+        beforeValidate: [
+          ({ value, siblingData }) => {
+            const source = typeof value === 'string' && value ? value : siblingData?.title
+            return typeof source === 'string' ? slugify(source) : value
+          },
+        ],
+        // The home page keeps the slug `home` in every language, whatever the title says.
+        beforeChange: [
+          async ({ value, req, originalDoc }) => {
+            const defaultLocale = (req.payload.config.localization || undefined)?.defaultLocale
+            if (!originalDoc?.id || !defaultLocale || !req.locale || req.locale === defaultLocale) return value
+            const base = await req.payload.findByID({
+              collection: 'pages',
+              id: originalDoc.id,
+              locale: defaultLocale as 'fr' | 'en',
+              fallbackLocale: false,
+              depth: 0,
+              draft: true,
+              overrideAccess: true,
+              // A copy of the request, so reading in the default language leaves this one alone.
+              req: { ...req, locale: defaultLocale, fallbackLocale: false } as typeof req,
+            })
+            return base.slug === HOME_SLUG ? HOME_SLUG : value
+          },
+        ],
+      },
+      validate: ((value, options) => {
+        if (typeof value === 'string' && RESERVED_SLUGS.includes(value)) {
+          return `"${value}" is used by the shop. Choose another slug.`
+        }
+        return requiredInDefaultLocale(value, options)
+      }) satisfies TextFieldSingleValidation,
+    },
+    // `meta.title`, `meta.description` and `meta.image` are added by the SEO plugin (see index.ts).
+    { name: 'layout', type: 'blocks', blocks: cmsBlocks },
+  ],
+}
