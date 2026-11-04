@@ -1,6 +1,7 @@
 import type { Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import { describeWithCms, describeWithShop } from '../support/modules'
 import { startPayload, type TestPayload } from '../support/payload'
 
 // Everything the shop, the CMS and core add to the admin is labelled in French and English. The
@@ -8,8 +9,6 @@ import { startPayload, type TestPayload } from '../support/payload'
 // (English only) or a label object missing a language fails here. Runs in every setup: it checks
 // whichever of these collections and globals the setup has.
 
-const OURS_COLLECTIONS = ['users', 'media', 'pages', 'products', 'orders', 'transactions']
-const OURS_GLOBALS = ['header', 'footer']
 // Written by Payload or a plugin whose own UI translates them.
 const SKIP = new Set(['blockName', 'meta', 'id', 'createdAt', 'updatedAt', 'deletedAt', 'createdBy', 'updatedBy', '_status'])
 const AUTH_FIELDS = new Set(['resetPasswordToken', 'resetPasswordExpiration', 'salt', 'hash', 'resetPasswordRequestedAt', 'loginAttempts', 'lockUntil', 'sessions'])
@@ -53,41 +52,51 @@ function missing(where: string, fields: AnyField[], found: string[] = []): strin
   return found
 }
 
-describe('admin labels', () => {
-  let test: TestPayload
-  let payload: Payload
+let test: TestPayload
+let payload: Payload
 
-  beforeAll(async () => {
-    test = await startPayload()
-    payload = test.payload
-  }, 60_000)
+beforeAll(async () => {
+  test = await startPayload()
+  payload = test.payload
+}, 60_000)
 
-  afterAll(async () => {
-    await test?.stop()
-  })
+afterAll(async () => {
+  await test?.stop()
+})
 
-  it.each(OURS_COLLECTIONS)('%s: collection, fields, options and descriptions in French and English', (slug) => {
-    const collection = payload.config.collections.find((c) => c.slug === slug)
-    if (!collection) return // this module is off in this setup
-    const labels = collection.labels as AnyField
-    // The plugin's collections have no `labels` object of their own (their names are translated).
-    if (['users', 'media', 'pages'].includes(slug)) {
-      expect(complete(labels.singular) && complete(labels.plural), `${slug}: collection labels`).toBe(true)
-    }
-    expect(missing(slug, collection.fields as AnyField[])).toEqual([])
-  })
+function checkCollection(slug: string) {
+  const collection = payload.config.collections.find((c) => c.slug === slug)
+  expect(collection, `${slug} is registered`).toBeDefined()
+  const labels = collection!.labels as AnyField
+  // The plugin's collections have no `labels` object of their own (their names are translated).
+  if (['users', 'media', 'pages'].includes(slug)) {
+    expect(complete(labels.singular) && complete(labels.plural), `${slug}: collection labels`).toBe(true)
+  }
+  expect(missing(slug, collection!.fields as AnyField[])).toEqual([])
+}
 
-  it.each(OURS_GLOBALS)('%s: global and fields in French and English', (slug) => {
-    const global = payload.config.globals.find((g) => g.slug === slug)
-    if (!global) return
-    expect(complete(global.label), `${slug}: global label`).toBe(true)
-    expect(missing(slug, global.fields as AnyField[])).toEqual([])
-  })
+function checkGlobal(slug: string) {
+  const global = payload.config.globals.find((g) => g.slug === slug)
+  expect(global, `${slug} is registered`).toBeDefined()
+  expect(complete(global!.label), `${slug}: global label`).toBe(true)
+  expect(missing(slug, global!.fields as AnyField[])).toEqual([])
+}
+
+describe('admin labels: core', () => {
+  it.each(['users', 'media'])('%s: labels in French and English', checkCollection)
+})
+
+describeWithCms('admin labels: cms', () => {
+  it('pages: labels in French and English', () => checkCollection('pages'))
+  it.each(['header', 'footer'])('%s: labels in French and English', checkGlobal)
+})
+
+describeWithShop('admin labels: shop', () => {
+  it.each(['products', 'orders', 'transactions'])('%s: labels in French and English', checkCollection)
 
   it('names the order statuses in both languages, shipped included', () => {
     const orders = payload.config.collections.find((c) => c.slug === 'orders')
-    if (!orders) return
-    const status = (orders.fields as AnyField[]).find((f) => f.name === 'status')
+    const status = (orders!.fields as AnyField[]).find((f) => f.name === 'status')
     expect(status?.options.map((o: AnyField) => o.value)).toEqual(['processing', 'shipped', 'cancelled', 'refunded'])
     expect(status?.options.every((o: AnyField) => complete(o.label))).toBe(true)
   })

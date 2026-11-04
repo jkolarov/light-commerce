@@ -14,7 +14,7 @@ const lines = [
 const names = new Map([['7', 'Tisane du soir']])
 
 const render = (language: string) =>
-  renderToStaticMarkup(<LinePricesTable lines={lines} names={names} total={3399 + 490} currency="EUR" language={language} />)
+  renderToStaticMarkup(<LinePricesTable lines={lines} names={names} subtotal={3399} shippingAmount={490} total={3399 + 490} currency="EUR" language={language} />)
 
 describeWithShop('order line prices in the admin', () => {
   it('shows a French table of products, quantities, prices and the total', () => {
@@ -25,7 +25,12 @@ describeWithShop('order line prices in the admin', () => {
     expect(html).toContain('12,50 €')
     expect(html).toContain('25,00 €')
     expect(html).toContain('8,99 €')
+    expect(html).toContain('33,99 €')
+    expect(html).toContain('4,90 €')
     expect(html).toContain('38,89 €')
+    expect(3399 + 490).toBe(3889) // subtotal + shipping = total
+    expect(html.indexOf('Sous-total')).toBeLessThan(html.indexOf('Livraison'))
+    expect(html.indexOf('Livraison')).toBeLessThan(html.indexOf('Total de la commande'))
     expect(html).not.toContain('{')
   })
 

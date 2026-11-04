@@ -10,8 +10,8 @@ import { formatMoney } from '../money'
 // like every admin component here; the styles come from Payload's own variables.
 
 const words = {
-  fr: { title: 'Lignes de la commande', product: 'Produit', quantity: 'Quantité', unitPrice: 'Prix unitaire', lineTotal: 'Total ligne', total: 'Total de la commande', none: 'Aucune ligne.' },
-  en: { title: 'Order lines', product: 'Product', quantity: 'Quantity', unitPrice: 'Unit price', lineTotal: 'Line total', total: 'Order total', none: 'No lines.' },
+  fr: { title: 'Lignes de la commande', product: 'Produit', quantity: 'Quantité', unitPrice: 'Prix unitaire', lineTotal: 'Total ligne', subtotal: 'Sous-total', shipping: 'Livraison', total: 'Total de la commande', none: 'Aucune ligne.' },
+  en: { title: 'Order lines', product: 'Product', quantity: 'Quantity', unitPrice: 'Unit price', lineTotal: 'Line total', subtotal: 'Subtotal', shipping: 'Shipping', total: 'Order total', none: 'No lines.' },
 }
 
 const cell = { padding: '0.375rem 0.75rem', borderBottom: '1px solid var(--theme-elevation-100, #e5e5e5)' } as const
@@ -22,12 +22,15 @@ type Props = {
   /** Product name by product id; a product that is gone shows as its id. */
   names: Map<string, string>
   total: number | null
+  /** What the lines add up to, and the shipping; shown above the total when known. */
+  subtotal?: number | null
+  shippingAmount?: number | null
   currency: string
   language: string | undefined
 }
 
 /** The table itself, with everything already loaded. */
-export function LinePricesTable({ lines, names, total, currency, language }: Props) {
+export function LinePricesTable({ lines, names, total, subtotal = null, shippingAmount = null, currency, language }: Props) {
   const locale: Locale = language === 'fr' ? 'fr' : 'en'
   const t = words[locale]
   const money = (cents: number) => formatMoney(cents, { currency, locale })
@@ -58,6 +61,22 @@ export function LinePricesTable({ lines, names, total, currency, language }: Pro
           </tbody>
           {total === null ? null : (
             <tfoot>
+              {subtotal === null ? null : (
+                <tr>
+                  <td style={{ ...cell, textAlign: 'left' }} colSpan={3}>
+                    {t.subtotal}
+                  </td>
+                  <td style={numeric}>{money(subtotal)}</td>
+                </tr>
+              )}
+              {shippingAmount === null ? null : (
+                <tr>
+                  <td style={{ ...cell, textAlign: 'left' }} colSpan={3}>
+                    {t.shipping}
+                  </td>
+                  <td style={numeric}>{money(shippingAmount)}</td>
+                </tr>
+              )}
               <tr>
                 <th style={{ ...cell, textAlign: 'left' }} colSpan={3}>
                   {t.total}
@@ -100,7 +119,8 @@ export async function LinePrices({ data, i18n, payload, user }: FieldProps) {
     })
     for (const doc of docs) if (doc.title) names.set(String(doc.id), doc.title)
   }
+  const cents = (value: unknown) => (typeof value === 'number' && Number.isInteger(value) ? value : null)
   const total = typeof data?.amount === 'number' && Number.isInteger(data.amount) ? data.amount : null
   const currency = typeof data?.currency === 'string' && data.currency ? data.currency : 'EUR'
-  return <LinePricesTable lines={lines} names={names} total={total} currency={currency} language={language} />
+  return <LinePricesTable lines={lines} names={names} total={total} subtotal={cents(data?.subtotal)} shippingAmount={cents(data?.shippingAmount)} currency={currency} language={language} />
 }
