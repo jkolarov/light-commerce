@@ -138,6 +138,7 @@ export interface UserAuthOperations {
  */
 export interface User {
   id: number;
+  roles?: ('owner' | 'staff')[] | null;
   createdBy?: {
     relationTo: 'users';
     value: number | User;
@@ -262,6 +263,7 @@ export interface PayloadLlmInstruction {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  roles?: T;
   createdBy?: T;
   updatedBy?: T;
   updatedAt?: T;
