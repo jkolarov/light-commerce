@@ -9,11 +9,15 @@ export type Product = { id: number; slug: string; priceInEUR: number; inventory:
 
 export type Order = {
   id: number
-  /** Cents: what was charged. */
+  /** Cents: what was charged, `subtotal + shippingAmount`. */
   amount: number
+  subtotal: number
+  shippingAmount: number
   currency: string
   customerEmail: string
   items: { product: number; quantity: number }[]
+  /** Set when something needs the owner, such as stock that ran out after the payment. */
+  needsAttention?: boolean | null
 }
 
 export type Transaction = {
@@ -29,7 +33,7 @@ export type Transaction = {
   stripe: { customerID: string; paymentIntentID: string }
 }
 
-type List<T> = { docs: T[] }
+type List<T> = { docs: T[]; totalDocs: number }
 
 /** `where[field][equals]=value`, as Payload's REST API reads it. */
 const whereEquals = (field: string, value: string) => new URLSearchParams({ [`where[${field}][equals]`]: value, depth: '0', limit: '10' })
@@ -37,6 +41,8 @@ const whereEquals = (field: string, value: string) => new URLSearchParams({ [`wh
 export type OwnerApi = {
   product(slug: string): Promise<Product>
   orders(customerEmail: string): Promise<Order[]>
+  /** How many orders the shop has, all customers together. */
+  orderCount(): Promise<number>
   transactions(customerEmail: string): Promise<Transaction[]>
   dispose(): Promise<void>
 }
@@ -50,11 +56,12 @@ export async function ownerApi(playwright: PlaywrightWorkerArgs['playwright']): 
   await login.dispose()
   const api: APIRequestContext = await playwright.request.newContext({ baseURL: e2e.baseURL, extraHTTPHeaders: { Authorization: `JWT ${token}` } })
 
-  async function list<T>(collection: string, query: URLSearchParams): Promise<T[]> {
+  async function read<T>(collection: string, query: URLSearchParams): Promise<List<T>> {
     const listed = await api.get(`/api/${collection}?${query}`)
     expect(listed.status(), `GET /api/${collection}`).toBe(200)
-    return ((await listed.json()) as List<T>).docs
+    return (await listed.json()) as List<T>
   }
+  const list = async <T>(collection: string, query: URLSearchParams) => (await read<T>(collection, query)).docs
 
   return {
     async product(slug) {
@@ -63,6 +70,7 @@ export async function ownerApi(playwright: PlaywrightWorkerArgs['playwright']): 
       return product
     },
     orders: (customerEmail) => list<Order>('orders', whereEquals('customerEmail', customerEmail)),
+    orderCount: async () => (await read<Order>('orders', new URLSearchParams({ depth: '0', limit: '1' }))).totalDocs,
     transactions: (customerEmail) => list<Transaction>('transactions', whereEquals('customerEmail', customerEmail)),
     dispose: () => api.dispose(),
   }

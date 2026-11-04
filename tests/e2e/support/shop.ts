@@ -18,6 +18,8 @@ const words = {
     postalCode: 'Code postal',
     city: 'Ville',
     pay: 'Payer',
+    thankYou: 'Merci',
+    orderNumber: (id: number) => `Commande n° ${id},`,
   },
   en: {
     addToCart: 'Add to cart',
@@ -31,8 +33,10 @@ const words = {
     postalCode: 'Postal code',
     city: 'City',
     pay: 'Pay',
+    thankYou: 'Thank you',
+    orderNumber: (id: number) => `Order ${id},`,
   },
-} satisfies Record<Locale, Record<string, string>>
+} satisfies Record<Locale, Record<string, string | ((id: number) => string)>>
 
 /** An amount as the site writes it: "12,80 €" in French, "€12.80" in English. */
 export const money = (cents: number, locale: Locale) => new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(cents / 100)
@@ -116,4 +120,20 @@ export async function payWithTestCard(page: Page, locale: Locale, total: number)
   const paymentIntent = new URL((await returning).url()).searchParams.get('payment_intent')
   expect(paymentIntent, 'the return path carries the PaymentIntent').toMatch(/^pi_[A-Za-z0-9]+$/)
   return paymentIntent!
+}
+
+/** The order's id in the confirmation page's address, `/<locale>/order/<id>?token=…`, once the browser is there. */
+export async function orderIdFromConfirmationPage(page: Page, locale: Locale): Promise<number> {
+  await expect(page).toHaveURL(new RegExp(`/${locale}/order/\\d+\\?token=[^&]+$`))
+  return Number(new URL(page.url()).pathname.split('/').pop())
+}
+
+/** The confirmation page of `order`: its address with the token, the thanks, the number and the total paid. */
+export async function expectConfirmationPage(page: Page, locale: Locale, order: { id: number; total: number }) {
+  const t = words[locale]
+  await expect(page).toHaveURL(new RegExp(`/${locale}/order/${order.id}\\?token=[^&]+$`))
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(t.thankYou)
+  const main = page.getByRole('main')
+  await expect(main).toContainText(t.orderNumber(order.id))
+  await expect(main.getByRole('complementary')).toContainText(moneyPattern(order.total, locale))
 }

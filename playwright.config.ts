@@ -46,7 +46,11 @@ export default defineConfig({
           name: 'Stripe CLI',
           command: `${quote(e2e.stripeCli)} listen --events payment_intent.succeeded,payment_intent.payment_failed --forward-to ${quote(`localhost:${e2e.port}${e2e.webhookPath}`)}`,
           env: { STRIPE_API_KEY: e2e.stripeSecretKey },
+          // "Ready!" is on stderr, in the line that also prints the signing secret: Playwright
+          // still reads stderr to wait for it, but doesn't echo it. The forwarded events
+          // (`--> payment_intent.succeeded`, `<-- [200] POST …`) are on stdout.
           wait: { stderr: /Ready!/ },
+          stderr: 'ignore',
           stdout: 'pipe',
           reuseExistingServer: false,
           timeout: 30_000,
