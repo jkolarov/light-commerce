@@ -1,0 +1,117 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// src/instrumentation.ts runs once when the server starts. Each test loads it afresh
+// (`vi.resetModules`), so a mock or an environment variable set in the test applies.
+const register = async () => (await import('@/instrumentation')).register()
+
+const variables = ['NEXT_RUNTIME', 'NODE_ENV', 'CI', 'LIGHT_CI_MODULES'] as const
+
+describe('server startup', () => {
+  const previous = Object.fromEntries(variables.map((key) => [key, process.env[key]]))
+  let exit: ReturnType<typeof vi.spyOn>
+  let logError: ReturnType<typeof vi.spyOn>
+  let warn: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    vi.resetModules()
+    process.env.NEXT_RUNTIME = 'nodejs'
+    delete process.env.LIGHT_CI_MODULES
+    exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never)
+    logError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+    vi.doUnmock('@/config/define')
+    vi.doUnmock('@/config/startup')
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+  })
+
+  it('starts with a valid light.config.ts', async () => {
+    await register()
+    expect(exit).not.toHaveBeenCalled()
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('stops the server, listing the problems, when light.config.ts is broken', async () => {
+    // The root file calls defineLightConfig when it is imported; make that call fail as it would
+    // for a broken file.
+    vi.doMock('@/config/define', async () => {
+      const { LightConfigError } = await import('@/config/errors')
+      return {
+        defineLightConfig: () => {
+          throw new LightConfigError(['theme.colors.primary: expected a hex colour'])
+        },
+      }
+    })
+    await register()
+    expect(logError).toHaveBeenCalledWith(
+      expect.stringMatching(/light\.config\.ts is not valid \(1 problem\):\n {2}- theme\.colors\.primary/),
+    )
+    expect(exit).toHaveBeenCalledWith(1)
+  })
+
+  it('stops the server when LIGHT_CI_MODULES is broken', async () => {
+    process.env.LIGHT_CI_MODULES = 'blog'
+    await register()
+    expect(logError).toHaveBeenCalledWith(expect.stringMatching(/LIGHT_CI_MODULES: unknown module "blog"/))
+    expect(exit).toHaveBeenCalledWith(1)
+  })
+
+  it('refuses LIGHT_CI_MODULES on a production server', async () => {
+    // It would switch a module off without a word: on a shop, payments would create no orders.
+    vi.stubEnv('NODE_ENV', 'production')
+    delete process.env.CI
+    process.env.LIGHT_CI_MODULES = 'cms'
+    await register()
+    expect(logError).toHaveBeenCalledWith(
+      expect.stringMatching(/LIGHT_CI_MODULES: set to "cms" on a production server, but it is for CI and tests only/),
+    )
+    expect(exit).toHaveBeenCalledWith(1)
+  })
+
+  it('accepts LIGHT_CI_MODULES on a production build in CI, with a warning', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    process.env.CI = 'true'
+    process.env.LIGHT_CI_MODULES = 'cms'
+    await register()
+    expect(exit).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/modules come from LIGHT_CI_MODULES=cms/))
+  })
+
+  it('warns when LIGHT_CI_MODULES switches modules in development', async () => {
+    process.env.LIGHT_CI_MODULES = 'shop'
+    await register()
+    expect(exit).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringMatching(/modules come from LIGHT_CI_MODULES=shop \(CI and tests only\), not from light\.config\.ts/),
+    )
+  })
+
+  it('lets errors other than a broken config through', async () => {
+    vi.doMock('@/config/define', () => ({
+      defineLightConfig: () => {
+        throw new TypeError('something else broke')
+      },
+    }))
+    await expect(register()).rejects.toThrow(TypeError)
+    expect(exit).not.toHaveBeenCalled()
+  })
+
+  it('does nothing in the edge runtime', async () => {
+    process.env.NEXT_RUNTIME = 'edge'
+    const stopIfConfigIsBroken = vi.fn()
+    vi.doMock('@/config/startup', () => ({ stopIfConfigIsBroken }))
+    await register()
+    expect(stopIfConfigIsBroken).not.toHaveBeenCalled()
+
+    process.env.NEXT_RUNTIME = 'nodejs'
+    await register()
+    expect(stopIfConfigIsBroken).toHaveBeenCalledOnce()
+  })
+})

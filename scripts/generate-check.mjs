@@ -13,7 +13,12 @@ const read = (file) => (existsSync(file) ? readFileSync(file, 'utf8') : null)
 const before = new Map(generatedFiles.map((file) => [file, read(file)]))
 
 try {
-  execFileSync('pnpm', ['generate'], { stdio: ['ignore', 'ignore', 'inherit'] })
+  // The committed files describe both modules, so compare with both on, whatever
+  // light.config.ts or the caller's LIGHT_CI_MODULES says (src/core/generatedTypes.ts).
+  execFileSync('pnpm', ['generate'], {
+    stdio: ['ignore', 'ignore', 'inherit'],
+    env: { ...process.env, LIGHT_CI_MODULES: 'cms,shop' },
+  })
 } catch {
   restore()
   console.error('generate:check: `pnpm generate` failed (see above).')

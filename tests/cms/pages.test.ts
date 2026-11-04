@@ -1,13 +1,14 @@
 import type { Payload } from 'payload'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, expect, it } from 'vitest'
 
 import { resolveLinkHref } from '@/modules/cms/fields/link'
 import { lookupPage, pageSlugs } from '@/modules/cms/pages/resolve'
 import type { User } from '@/payload-types'
 
+import { describeWithCms } from '../support/modules'
 import { startPayload, type TestPayload } from '../support/payload'
 
-describe('pages', () => {
+describeWithCms('pages', () => {
   let test: TestPayload
   let payload: Payload
   let staff: User
@@ -159,7 +160,7 @@ describe('pages', () => {
 })
 
 
-describe('resolveLinkHref without a database', () => {
+describeWithCms('resolveLinkHref without a database', () => {
   const page = { _status: 'published', slug: { fr: 'a-propos', en: 'about' } }
   it('builds the path in the requested language, home is the locale root', () => {
     expect(resolveLinkHref({ type: 'page', page }, 'en')).toBe('/en/about')

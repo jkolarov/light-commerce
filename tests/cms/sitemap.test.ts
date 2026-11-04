@@ -1,12 +1,12 @@
 import type { Payload } from 'payload'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, expect, it } from 'vitest'
 
-import { getLightConfig } from '@/config'
 import { pageSitemapEntries } from '@/modules/cms/pages/sitemap'
 
+import { describeWithCms } from '../support/modules'
 import { startPayload, type TestPayload } from '../support/payload'
 
-describe.skipIf(!getLightConfig().modules.cms)('sitemap entries', () => {
+describeWithCms('sitemap entries', () => {
   let test: TestPayload
   let payload: Payload
 
