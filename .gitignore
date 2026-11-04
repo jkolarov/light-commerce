@@ -35,3 +35,8 @@ npm-debug.log*
 # local tooling
 graft/
 .claude/settings.local.json
+
+# end-to-end test (Playwright)
+/playwright-report/
+/test-results/
+/blob-report/
