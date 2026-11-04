@@ -1,6 +1,58 @@
 {
-  "placeholder": {
-    "title": "Site en construction",
-    "body": "Les pages arrivent bientôt."
+  "common": {
+    "home": "Accueil",
+    "loading": "Chargement…",
+    "error": "Une erreur est survenue. Veuillez réessayer.",
+    "notFound": "Page introuvable",
+    "backToHome": "Retour à l’accueil",
+    "close": "Fermer",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "language": "Langue"
+  },
+  "nav": {
+    "menu": "Menu",
+    "shop": "Boutique",
+    "cart": "Panier",
+    "skipToContent": "Aller au contenu"
+  },
+  "footer": {
+    "contact": "Contact",
+    "allRightsReserved": "Tous droits réservés."
+  },
+  "shop": {
+    "title": "Boutique",
+    "price": "Prix",
+    "addToCart": "Ajouter au panier",
+    "outOfStock": "Épuisé",
+    "inStock": "En stock",
+    "noProducts": "Aucun produit pour le moment."
+  },
+  "cart": {
+    "title": "Votre panier",
+    "empty": "Votre panier est vide.",
+    "quantity": "Quantité",
+    "remove": "Retirer",
+    "subtotal": "Sous-total",
+    "shipping": "Livraison",
+    "total": "Total",
+    "checkout": "Commander",
+    "continueShopping": "Poursuivre mes achats"
+  },
+  "checkout": {
+    "title": "Commande",
+    "email": "E-mail",
+    "shippingAddress": "Adresse de livraison",
+    "payment": "Paiement",
+    "pay": "Payer",
+    "processing": "Traitement de votre paiement…",
+    "paymentFailed": "Le paiement n’a pas abouti. Vous n’avez pas été débité."
+  },
+  "order": {
+    "title": "Confirmation de commande",
+    "thankYou": "Merci pour votre commande !",
+    "number": "Numéro de commande",
+    "confirmationSent": "Un e-mail de confirmation vous a été envoyé.",
+    "status": "Statut"
   }
 }

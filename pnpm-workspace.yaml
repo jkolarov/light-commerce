@@ -2,3 +2,6 @@
 # or the install fails with ERR_PNPM_IGNORED_BUILDS. Approve with `pnpm approve-builds <pkg>`.
 allowBuilds:
   esbuild: true
+  # Pulled in by next-intl's message extractor, which we don't use.
+  '@parcel/watcher': false
+  '@swc/core': false

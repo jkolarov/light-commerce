@@ -26,6 +26,10 @@ describe('Payload boots', () => {
     expect(localization.fallback).toBe(true)
   })
 
+  it('offers the admin in French and English', () => {
+    expect(Object.keys(payload.config.i18n.supportedLanguages ?? {}).sort()).toEqual(['en', 'fr'])
+  })
+
   it('logs into the admin with the users collection', () => {
     expect(payload.config.admin.user).toBe('users')
     expect(payload.collections.users?.config.auth).toBeTruthy()

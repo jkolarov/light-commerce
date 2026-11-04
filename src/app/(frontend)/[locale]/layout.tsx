@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
+import { NextIntlClientProvider } from 'next-intl'
+import { setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import type { ReactNode } from 'react'
 
+import { getLightConfig } from '@/config'
 import { isLocale } from '@/core/i18n/locales'
 import '@/theme/globals.css'
 
@@ -18,11 +21,14 @@ type Props = {
 
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params
-  if (!isLocale(locale)) notFound()
+  if (!isLocale(locale) || !getLightConfig().locales.available.includes(locale)) notFound()
+  setRequestLocale(locale)
 
   return (
     <html lang={locale}>
-      <body>{children}</body>
+      <body>
+        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+      </body>
     </html>
   )
 }
