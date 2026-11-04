@@ -1,12 +1,19 @@
-import type { Payload } from 'payload'
-import { afterAll, beforeAll, expect, it } from 'vitest'
+import { handleEndpoints, type Payload } from 'payload'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { afterAll, beforeAll, expect, it, vi } from 'vitest'
 
+import { cmsBlockComponents } from '@/modules/cms/blocks/components'
 import { isValidLinkUrl, resolveLinkHref } from '@/modules/cms/fields/link'
 import { lookupPage, pageSlugs } from '@/modules/cms/pages/resolve'
-import type { User } from '@/payload-types'
+import type { Page, User } from '@/payload-types'
+import { switchLocalePath } from '@/theme/language'
 
 import { describeWithCms } from '../support/modules'
 import { startPayload, type TestPayload } from '../support/payload'
+import { paragraph, richText, text } from './blocks.fixtures'
+
+// The page route reads the visitor from the request headers: an anonymous visitor here.
+vi.mock('next/headers', () => ({ headers: async () => new Headers() }))
 
 describeWithCms('pages', () => {
   let test: TestPayload
@@ -105,10 +112,76 @@ describeWithCms('pages', () => {
     expect(await lookupPage({ payload, locale: 'fr', slug: 'about' })).toEqual({ kind: 'redirect', to: '/fr/a-propos' })
   })
 
-  it('keeps a language private until the page is published in it', async () => {
-    await payload.create({ collection: 'pages', data: { title: 'Bientôt', _status: 'published' }, locale: 'fr', overrideAccess: true })
-    expect((await lookupPage({ payload, locale: 'fr', slug: 'bientot' })).kind).toBe('page')
-    expect((await lookupPage({ payload, locale: 'en', slug: 'bientot' })).kind).toBe('notFound')
+  it('publishes in every language at once, from a create or a one-language Publish, French filling the gaps', async () => {
+    const asStaff = { ...staff, collection: 'users' as const }
+    await payload.create({ collection: 'pages', data: { title: 'Bientôt', _status: 'published' }, locale: 'fr', overrideAccess: false, user: asStaff })
+    const draft = await payload.create({
+      collection: 'pages', data: { title: 'Ensuite', _status: 'draft' }, draft: true, locale: 'fr', overrideAccess: false, user: asStaff,
+    })
+    expect((await lookupPage({ payload, locale: 'en', slug: 'ensuite' })).kind).toBe('notFound')
+    // The admin's Publish button ("Publier en Français") saves the language on screen.
+    await payload.update({ collection: 'pages', id: draft.id, data: { _status: 'published' }, locale: 'fr', overrideAccess: false, user: asStaff })
+    for (const [slug, title] of [['bientot', 'Bientôt'], ['ensuite', 'Ensuite']]) {
+      const en = await lookupPage({ payload, locale: 'en', slug: slug! })
+      expect(en.kind === 'page' && en.page.title, slug).toBe(title)
+    }
+  })
+
+  it('publishes in every language from the REST API too, the way the admin does', async () => {
+    const draft = await payload.create({ collection: 'pages', data: { title: 'Par l’API', _status: 'draft' }, draft: true, locale: 'fr', overrideAccess: true })
+    const { token } = await payload.login({ collection: 'users', data: { email: 'staff@example.com', password: 'pw-staff-1' } })
+    const url = `http://localhost/api/pages/${draft.id}?locale=fr&depth=0`
+    const res = await handleEndpoints({
+      config: payload.config,
+      path: `/api/pages/${draft.id}`,
+      request: new Request(url, {
+        method: 'PATCH',
+        headers: { Authorization: `JWT ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _status: 'published' }),
+      }),
+    })
+    expect(res.status).toBe(200)
+    const en = await lookupPage({ payload, locale: 'en', slug: 'par-l-api' })
+    expect(en.kind === 'page' && en.page.title).toBe('Par l’API')
+  })
+
+  it('answers in English with the French text, for a page published in French only', async () => {
+    await payload.create({
+      collection: 'pages',
+      data: { title: 'Nouveautés', _status: 'published', layout: [{ blockType: 'richText', content: richText(paragraph(text('Les tisanes de la saison.'))) }] as Page['layout'] },
+      locale: 'fr',
+      overrideAccess: true,
+    })
+    const { CmsPage } = await import('@/modules/cms/pages/route')
+    // `notFound()` would throw here; a rendered page is a 200.
+    const html = renderToStaticMarkup(await CmsPage({ locale: 'en', slug: 'nouveautes', components: cmsBlockComponents }))
+    expect(html).toContain('Les tisanes de la saison.')
+  })
+
+  it('keeps a page out of one language after "Unpublish in English", until the next publish', async () => {
+    const page = await payload.create({ collection: 'pages', data: { title: 'Saison', _status: 'published' }, locale: 'fr', overrideAccess: true })
+    // What the admin's "Unpublish in English" sends: `_status: 'draft'` for that language only.
+    await payload.update({ collection: 'pages', id: page.id, data: { _status: 'draft' }, locale: 'en', overrideAccess: true })
+    expect((await lookupPage({ payload, locale: 'fr', slug: 'saison' })).kind).toBe('page')
+    // The French address in English, where the language switch leads, goes to the English home page.
+    expect(await lookupPage({ payload, locale: 'en', slug: 'saison' })).toEqual({ kind: 'redirect', to: '/en' })
+    // Publishing again, in any language, publishes it everywhere.
+    await payload.update({ collection: 'pages', id: page.id, data: { _status: 'published' }, locale: 'fr', overrideAccess: true })
+    expect((await lookupPage({ payload, locale: 'en', slug: 'saison' })).kind).toBe('page')
+  })
+
+  it('sends the other language of a page unpublished there to its home page, never to a 404', async () => {
+    const page = await payload.create({ collection: 'pages', data: { title: 'Atelier', slug: 'atelier', _status: 'published' }, locale: 'fr', overrideAccess: true })
+    await payload.update({ collection: 'pages', id: page.id, data: { title: 'Workshop', slug: 'workshop', _status: 'published' }, locale: 'en', overrideAccess: true })
+    await payload.update({ collection: 'pages', id: page.id, data: { _status: 'draft' }, locale: 'en', overrideAccess: true })
+    // The language switch on /fr/atelier links to /en/atelier, which leads to the English home page.
+    expect(switchLocalePath('/fr/atelier', 'en')).toBe('/en/atelier')
+    expect(await lookupPage({ payload, locale: 'en', slug: 'atelier' })).toEqual({ kind: 'redirect', to: '/en' })
+    // The page's own English address is offline.
+    expect((await lookupPage({ payload, locale: 'en', slug: 'workshop' })).kind).toBe('notFound')
+    // Staff still preview it.
+    const forStaff = await lookupPage({ payload, locale: 'en', slug: 'workshop', user: { ...staff, collection: 'users' } })
+    expect(forStaff.kind === 'page' && forStaff.page.title).toBe('Workshop')
   })
 
   it('keeps draft text and versions from anonymous callers', async () => {
@@ -136,6 +209,8 @@ describeWithCms('pages', () => {
 
   it('lists in hreflang only the languages where the page is published', async () => {
     const created = await payload.create({ collection: 'pages', data: { title: 'Seul FR', _status: 'published' }, locale: 'fr', overrideAccess: true })
+    expect(await pageSlugs({ payload, id: created.id })).toEqual({ fr: 'seul-fr', en: 'seul-fr' })
+    await payload.update({ collection: 'pages', id: created.id, data: { _status: 'draft' }, locale: 'en', overrideAccess: true })
     expect(await pageSlugs({ payload, id: created.id })).toEqual({ fr: 'seul-fr' })
     expect(await pageSlugs({ payload, id: created.id, user: { ...staff, collection: 'users' } })).toEqual({ fr: 'seul-fr', en: 'seul-fr' })
   })
@@ -146,6 +221,11 @@ describeWithCms('pages', () => {
     const result = await lookupPage({ payload, locale: 'en', slug: 'home' })
     expect(result.kind).toBe('page')
     if (result.kind === 'page') expect(result.page.title).toBe('Welcome')
+    expect(await pageSlugs({ payload, id: home.id })).toEqual({ fr: 'home', en: 'home' })
+    // Unpublished in English, the English home page is a 404, not a redirect to itself.
+    await payload.update({ collection: 'pages', id: home.id, data: { _status: 'draft' }, locale: 'en', overrideAccess: true })
+    expect((await lookupPage({ payload, locale: 'en', slug: 'home' })).kind).toBe('notFound')
+    expect((await lookupPage({ payload, locale: 'fr', slug: 'home' })).kind).toBe('page')
   })
 
   it('answers not found for an unknown slug', async () => {

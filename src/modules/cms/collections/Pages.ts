@@ -2,6 +2,7 @@ import type { CollectionConfig, TextFieldSingleValidation } from 'payload'
 
 import { isStaffOrOwner, publishedOrStaff } from '@/core/access'
 import { forcePublishedForPublic, readVersions } from '@/core/access/drafts'
+import { publishInEveryLocale } from '@/core/collections/publishEverywhere'
 
 import { cmsBlocks } from '../blocks'
 import { requiredInDefaultLocale } from '../fields/requiredInDefaultLocale'
@@ -21,10 +22,16 @@ export const Pages: CollectionConfig = {
     delete: isStaffOrOwner,
     readVersions,
   },
-  hooks: { beforeOperation: [forcePublishedForPublic] },
+  // Publishing a page publishes it in every language, like a product: text not translated yet
+  // shows in the default language (core's `publishInEveryLocale`).
+  hooks: { beforeOperation: [forcePublishedForPublic, publishInEveryLocale] },
   admin: {
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug', '_status', 'updatedAt'],
+    description: {
+      en: 'Publish puts the page online in every language at once. Text not yet translated shows in the default language.',
+      fr: 'Publier met la page en ligne dans toutes les langues à la fois. Un texte pas encore traduit s’affiche dans la langue par défaut.',
+    },
   },
   versions: { drafts: true },
   fields: [

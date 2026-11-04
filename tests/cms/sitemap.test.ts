@@ -18,8 +18,11 @@ describeWithCms('sitemap entries', () => {
     // Published in FR and EN, with an EN slug.
     const about = await make('À propos', { slug: 'a-propos', _status: 'published' })
     await payload.update({ collection: 'pages', id: about.id, data: { title: 'About', slug: 'about', _status: 'published' }, locale: 'en', overrideAccess: true })
-    // Published in FR only.
-    await make('Seul FR', { _status: 'published' })
+    // Published from FR, with FR text only: every language, the FR slug filling the gap.
+    await make('Livraison', { _status: 'published' })
+    // Published, then unpublished in EN ("Unpublish in English").
+    const frOnly = await make('Seul FR', { _status: 'published' })
+    await payload.update({ collection: 'pages', id: frOnly.id, data: { _status: 'draft' }, locale: 'en', overrideAccess: true })
     // Draft.
     await make('Secret', { _status: 'draft' })
     // Home page.
@@ -35,6 +38,8 @@ describeWithCms('sitemap entries', () => {
     const urls = entries.map((e) => e.url)
     expect(urls).toContain('https://example.com/fr/a-propos')
     expect(urls).toContain('https://example.com/en/about')
+    expect(urls).toContain('https://example.com/fr/livraison')
+    expect(urls).toContain('https://example.com/en/livraison')
     expect(urls).toContain('https://example.com/fr/seul-fr')
     expect(urls).not.toContain('https://example.com/en/seul-fr')
     expect(urls.some((u) => u.includes('secret'))).toBe(false)
