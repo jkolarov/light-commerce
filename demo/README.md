@@ -330,6 +330,8 @@ The header and footer menus (the `header` and `footer` globals). Each item is a 
 
 Items appear in array order. The home page isn't in either menu; the logo links to it.
 
+The footer global also has a short text under the logo. It isn't in this file: S23 takes it from the taglines in `brand.md` (the `- Tagline FR: *...*` and `- Tagline EN: *...*` lines), and leaves it empty when there are none.
+
 ## Loading order (for S23)
 
 1. Upload every file listed in `media.json`, with its alt text in both locales.

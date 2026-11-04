@@ -3,6 +3,7 @@
 #   docker compose -f compose.dev.yml up -d mailpit        Mailpit: catches email, nothing leaves the machine
 #   docker compose -f compose.dev.yml --profile app up -d --build   also runs the app image
 #   docker compose -f compose.dev.yml run --rm schema       push the schema to an empty database (see README)
+#   docker compose -f compose.dev.yml run --rm seed         load the demo company (`--force` to wipe content first)
 #
 # Host ports are overridable (MAILPIT_SMTP_PORT, MAILPIT_UI_PORT, APP_PORT) in the shell or `.env`,
 # in case another stack already uses them. Point the app at Mailpit with SMTP_HOST=localhost and
@@ -55,6 +56,24 @@ services:
       PAYLOAD_SECRET: ${PAYLOAD_SECRET:-}
     volumes:
       - data:/app/data
+
+  # Loads the demo company (`pnpm seed`, src/seed/) into the volume's database; pushes the schema
+  # first if it has none. demo/ is not in the image (.dockerignore): it is read from this checkout.
+  #   docker compose -f compose.dev.yml run --rm seed            [--force]
+  seed:
+    profiles: [tools]
+    image: ${APP_IMAGE:-light-commerce:dev}-schema
+    build:
+      context: .
+      target: schema
+    entrypoint: ["./node_modules/.bin/payload", "run", "src/seed/cli.ts"]
+    environment:
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:-}
+      SEED_OWNER_EMAIL: ${SEED_OWNER_EMAIL:-}
+      SEED_OWNER_PASSWORD: ${SEED_OWNER_PASSWORD:-}
+    volumes:
+      - data:/app/data
+      - ./demo:/app/demo:ro
 
 volumes:
   data:

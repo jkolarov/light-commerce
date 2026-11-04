@@ -327,8 +327,26 @@ describe('demo seed', () => {
         data: { email: 'staff@lesclaies.example', password: 'staff-password', roles: ['staff'] },
         overrideAccess: true,
       })
+      // Shop activity, like the live demo has by night: it goes too.
+      if (modules.shop) {
+        const [product] = await productIds(['tilleul'])
+        const items = [{ product: product!, quantity: 1 }]
+        await payload.create({ collection: 'carts', data: { items, currency: 'EUR' }, overrideAccess: true })
+        await payload.create({
+          collection: 'orders',
+          data: { items, amount: 1340, currency: 'EUR', customerEmail: 'visitor@example.com' },
+          overrideAccess: true,
+        })
+      }
       lines.length = 0
       const forced = await seed(true)
+
+      if (modules.shop) {
+        for (const collection of ['carts', 'orders'] as const) {
+          expect((await payload.count({ collection, overrideAccess: true })).totalDocs, collection).toBe(0)
+          expect(forced.wiped?.[collection], collection).toBe(1)
+        }
+      }
 
       expect(await mediaId('other-photo.png')).toBeUndefined()
       expect(await count('media')).toBe((modules.cms ? PAGE_PHOTOS : 0) + (modules.shop ? PRODUCT_PHOTOS : 0))
