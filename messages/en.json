@@ -32,6 +32,9 @@
     "text": "The site ran into a problem while preparing this page. Try again in a moment; if it keeps happening, start again from the home page.",
     "retry": "Try again"
   },
+  "home": {
+    "description": "Browse our products."
+  },
   "shop": {
     "title": "Shop",
     "price": "Price",
