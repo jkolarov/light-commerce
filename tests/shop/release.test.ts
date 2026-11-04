@@ -32,6 +32,7 @@ describeWithShop('releasing a payment before its transaction is deleted', () => 
     if (!result.ok) throw new Error(result.reason)
     return (await payments.findPaymentTransaction(payload, result.paymentIntentId))!
   }
+  const hoursLater = (hours: number) => new Date(Date.now() + hours * 3_600_000)
   const reload = (id: number) => payload.findByID({ collection: 'transactions', id, depth: 0, overrideAccess: true })
   const intentStatus = (transaction: { stripe?: { paymentIntentID?: string | null } | null }) => stripe.intents.get(transaction.stripe!.paymentIntentID!)?.status
 
@@ -96,6 +97,39 @@ describeWithShop('releasing a payment before its transaction is deleted', () => 
     }
     const unknown = await started()
     stripe.intents.delete(unknown.stripe!.paymentIntentID!)
-    expect(await release.releasePayment(payload, unknown)).toMatchObject({ deletable: true, action: 'closed', reason: 'unknown to Stripe' })
+    expect(await release.releasePayment(payload, unknown, { now: hoursLater(25) })).toMatchObject({ deletable: true, action: 'closed', reason: 'unknown to Stripe', stripe: 'unknown' })
+  })
+
+  it('keeps a payment Stripe doesn’t know while it is younger than a day: tonight’s key may be the wrong one', async () => {
+    const unknown = await started()
+    stripe.intents.delete(unknown.stripe!.paymentIntentID!)
+    expect(await release.releasePayment(payload, unknown)).toMatchObject({ deletable: false, action: 'kept', stripe: 'unknown' })
+    expect(await release.releasePayment(payload, unknown, { now: hoursLater(23) })).toMatchObject({ deletable: false, action: 'kept' })
+    expect(await release.releasePayment(payload, unknown, { now: hoursLater(25) })).toMatchObject({ deletable: true, action: 'closed' })
+  })
+
+  it('tells whether Stripe knows the settled payments, which it surely had: the key is this shop’s', async () => {
+    const settled = await started()
+    stripe.pay(settled.stripe!.paymentIntentID!)
+    await release.releasePayment(payload, settled)
+    const reloaded = await reload(settled.id)
+    const open = await started()
+    expect(await release.stripeKnowsSettledPayments([open, reloaded])).toBe(true)
+    // Another account's key: Stripe knows none of them.
+    const intent = stripe.intents.get(settled.stripe!.paymentIntentID!)!
+    stripe.intents.delete(settled.stripe!.paymentIntentID!)
+    try {
+      expect(await release.stripeKnowsSettledPayments([open, reloaded])).toBe(false)
+    } finally {
+      stripe.intents.set(settled.stripe!.paymentIntentID!, intent)
+    }
+    // Nothing settled to ask about, or Stripe unreachable: can't tell.
+    expect(await release.stripeKnowsSettledPayments([open])).toBeNull()
+    stripe.unreachable = true
+    try {
+      expect(await release.stripeKnowsSettledPayments([reloaded])).toBeNull()
+    } finally {
+      stripe.unreachable = false
+    }
   })
 })

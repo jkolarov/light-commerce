@@ -21,8 +21,12 @@ import { foreignChecks } from './wipe'
 //    paying at that moment still gets their order. Every other transaction goes through
 //    `releasePayment` (the shop, orders/release.ts) first: one still open at Stripe is cancelled
 //    there before it is deleted, a paid one is settled, and one Stripe is still settling, or that
-//    can't be checked (Stripe unreachable), is kept for the next night. A kept payment keeps its
-//    cart and any order made for it. Payments flagged for the owner are logged before they go.
+//    can't be checked (Stripe unreachable), is kept for the next night, as is one Stripe doesn't
+//    know that is younger than a day. When Stripe knows none of the payments it is asked about
+//    (most likely a wrong STRIPE_SECRET_KEY that night), no transaction is deleted at all, and the
+//    log says so. A kept payment keeps its cart and any order made for it, and so does a payment
+//    started while the reset runs, even on an older cart. Payments flagged for the owner are
+//    logged before they go.
 // 3. Content the demo doesn't have (pages, products, photos added in the admin) is deleted, except
 //    a product a kept payment is for (and, that night, the photos the demo doesn't have).
 // 4. The seed runs again: the demo's text, photos, menus and stock as in demo/.
@@ -88,6 +92,18 @@ async function reconcile(ctx: SeedContext, now: Date): Promise<Record<string, nu
   return counts
 }
 
+/** Payments started since `startedAt`: while the reset runs. */
+async function startedSince(ctx: SeedContext, startedAt: Date): Promise<Transaction[]> {
+  const { docs } = await ctx.payload.find({
+    collection: 'transactions',
+    where: { createdAt: { greater_than_equal: startedAt.toISOString() } },
+    depth: 0,
+    pagination: false,
+    overrideAccess: true,
+  })
+  return docs
+}
+
 /** Step 2: the shop's activity from before `startedAt` (see above). Returns what was kept. */
 async function clearShopActivity(ctx: SeedContext, startedAt: Date, inProgressMinutes: number, deleted: Record<string, number>) {
   const { payload } = ctx
@@ -101,17 +117,19 @@ async function clearShopActivity(ctx: SeedContext, startedAt: Date, inProgressMi
     ctx.log(`Reset: transaction ${transaction.id} (PaymentIntent ${transaction.stripe?.paymentIntentID ?? 'none'}) needed attention: ${transaction.attentionNote}`)
   }
 
-  const { releasePayment } = await import('@/modules/shop/orders/release')
-  const kept: Transaction[] = []
+  const { releasePayment, stripeKnowsSettledPayments } = await import('@/modules/shop/orders/release')
+  let kept: Transaction[] = []
   const actions: string[] = []
+  const stripeAnswers: string[] = []
   for (const transaction of candidates) {
     if (inProgress(transaction)) {
       kept.push(transaction)
       actions.push('in progress')
       continue
     }
-    const release = await releasePayment(payload, transaction)
+    const release = await releasePayment(payload, transaction, { now: startedAt })
     actions.push(release.action)
+    if (release.stripe) stripeAnswers.push(release.stripe)
     if (!release.deletable) {
       kept.push(transaction)
       ctx.log(`Reset: kept transaction ${transaction.id} (PaymentIntent ${release.paymentIntentId}): ${release.action}${release.reason ? `, ${release.reason}` : ''}.`)
@@ -119,6 +137,17 @@ async function clearShopActivity(ctx: SeedContext, startedAt: Date, inProgressMi
   }
   const released = countBy(actions)
   if (candidates.length) ctx.log(`Reset: payments before deleting them: ${listed(released)}.`)
+
+  // Stripe knew none of the payments it was asked about: most likely tonight's key is another
+  // account's. Nothing was cancelled or settled then, so keep every transaction, unless Stripe
+  // knows a settled payment (it surely had those): then the key is right, and they are just old.
+  if (stripeAnswers.length && stripeAnswers.every((answer) => answer === 'unknown') && (await stripeKnowsSettledPayments(candidates)) !== true) {
+    kept = [...candidates]
+    ctx.log(
+      `Reset: WARNING: Stripe knew none of the ${stripeAnswers.length} payment(s) it was asked about. Is STRIPE_SECRET_KEY ` +
+        `this shop's (test) account? To be safe, no transaction was deleted tonight, nor their carts and orders.`,
+    )
+  }
 
   const transactions = kept.map((transaction) => transaction.id)
   const carts = ids(kept.map((transaction) => transaction.cart))
@@ -131,15 +160,25 @@ async function clearShopActivity(ctx: SeedContext, startedAt: Date, inProgressMi
   // Orders: also those the reconcile step just made for a payment that goes now.
   const gone = candidates.filter((transaction) => !transactions.includes(transaction.id)).map((transaction) => transaction.id)
   const ofGone: Where[] = gone.length ? [{ transactions: { in: gone } }] : []
-  const steps: [CollectionSlug, Where][] = [
-    ['orders', { and: [{ or: [before, ...ofGone] }, notIn(orders)] }],
-    ['transactions', { and: [before, notIn(transactions)] }],
-    ['carts', { and: [before, notIn(carts)] }],
-    ['addresses', before],
+  // Carts: also those of payments started while the reset runs (asked just before their delete):
+  // the cart may be older than the reset, and the payment is settled from it.
+  const steps: [CollectionSlug, () => Promise<Where>][] = [
+    ['orders', async () => ({ and: [{ or: [before, ...ofGone] }, notIn(orders)] })],
+    ['transactions', async () => ({ and: [before, notIn(transactions)] })],
+    [
+      'carts',
+      async () => {
+        const late = await startedSince(ctx, startedAt)
+        carts.push(...ids(late.map((transaction) => transaction.cart)).filter((id) => !carts.includes(id)))
+        products.push(...ids(late.flatMap((transaction) => (transaction.items ?? []).map((item) => item.product))).filter((id) => !products.includes(id)))
+        return { and: [before, notIn(carts)] }
+      },
+    ],
+    ['addresses', async () => before],
   ]
   for (const [collection, where] of steps) {
     if (!payload.collections[collection]) continue
-    const n = await deleteWhere(ctx, collection, where)
+    const n = await deleteWhere(ctx, collection, await where())
     if (n) deleted[collection] = n
   }
   if (transactions.length) ctx.log(`Reset: kept ${transactions.length} payment(s) (transactions ${transactions.join(', ')}), with their carts and orders.`)
