@@ -46,6 +46,17 @@ describe('setup: shop only', () => {
     expect(pluginCalls).toEqual({ cms: [], shop: [[{ config }]] })
   })
 
+  it("runs the shop's products without the CMS", async () => {
+    const product = await payload.create({
+      collection: 'products',
+      data: { title: 'Sans CMS', slug: 'sans-cms', priceInEUR: 500, inventory: 1, _status: 'published' },
+      overrideAccess: true,
+    })
+    const found = await payload.find({ collection: 'products', where: { slug: { equals: 'sans-cms' } }, overrideAccess: false })
+    expect(found.docs.map((p) => p.id)).toEqual([product.id])
+    expect(payload.config.collections.map((c) => c.slug)).not.toContain('pages')
+  })
+
   it('never writes its types over the committed src/payload-types.ts', () => {
     // The committed file describes both modules; this setup's types go to a scratch file.
     expect(payload.config.typescript.outputFile).not.toBe(path.resolve('src/payload-types.ts'))
