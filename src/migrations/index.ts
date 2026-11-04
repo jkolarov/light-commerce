@@ -1,9 +1,9 @@
-import type { MigrateDownArgs, MigrateUpArgs } from '@payloadcms/db-sqlite'
+import * as migration_20261104_103848_baseline from './20261104_103848_baseline';
 
-// The production container runs these on start (`prodMigrations` in src/core/db.ts).
-// Empty until S26 adds the baseline migration: `pnpm payload migrate:create` then rewrites this file.
-export const migrations: {
-  down: (args: MigrateDownArgs) => Promise<void>
-  name: string
-  up: (args: MigrateUpArgs) => Promise<void>
-}[] = []
+export const migrations = [
+  {
+    up: migration_20261104_103848_baseline.up,
+    down: migration_20261104_103848_baseline.down,
+    name: '20261104_103848_baseline'
+  },
+];

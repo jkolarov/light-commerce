@@ -2,23 +2,57 @@
 # in compose project `lightcommerce` (own containers, volume and network). Run it next to other
 # stacks on the same host. Host ports are loopback only; the public entry is the tunnel.
 #
-#   deploy/demo/deploy.sh                      rebuild from the checked-out branch and restart
-#   docker compose -p lightcommerce -f deploy/demo/compose.yml --profile tools run --rm schema
-#                                              one-off schema push for an empty database (until S26)
+#   deploy/demo/deploy.sh          rebuild from the checked-out commit and restart (see README)
+#   deploy/demo/reset.sh           the nightly reset, by hand (cron runs it every night)
+#   docker compose -p lightcommerce -f deploy/demo/compose.yml run --rm -T seed
+#                                  load the demo company (first deploy: creates the owner)
 #
-# Variables come from deploy/demo/.env (gitignored, see .env.example).
+# The app applies the database migrations as it starts, before it answers, and exits if one fails
+# (src/migrations, `prodMigrations`, src/core/dbStartup.ts); nothing here pushes the schema. Variables come from deploy/demo/.env (gitignored, see .env.example).
 name: lightcommerce
+
+# The image's build. The seed and reset image shares the app's build stage, so it needs the same
+# build args (otherwise a second `next build`).
+x-build: &build
+  context: ../..
+  args:
+    NEXT_PUBLIC_SERVER_URL: https://lightcommerce.fluxory.dev
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+
+# One-off jobs on the app's database (the Dockerfile's `schema` stage: the Payload CLI, full
+# node_modules). NODE_ENV=production (the stage's default, repeated here): Payload applies pending
+# migrations and never pushes. demo/ is not in the image: it is read from this checkout. Email
+# goes to Mailpit, as the app's.
+x-tools: &tools
+  profiles: [tools]
+  build:
+    <<: *build
+    target: schema
+  image: lightcommerce-tools
+  volumes:
+    - data:/app/data
+    - ../../demo:/app/demo:ro
+  depends_on:
+    mailpit:
+      condition: service_healthy
+
+x-tools-env: &tools-env
+  NODE_ENV: production
+  PAYLOAD_SECRET: ${PAYLOAD_SECRET:?set PAYLOAD_SECRET in deploy/demo/.env}
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
+  SEED_OWNER_EMAIL: ${SEED_OWNER_EMAIL:-}
 
 services:
   app:
     build:
-      context: ../..
+      <<: *build
       target: runner
-      args:
-        NEXT_PUBLIC_SERVER_URL: https://lightcommerce.fluxory.dev
-        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
     image: lightcommerce-app
     restart: unless-stopped
+    # On stop, Next finishes what runs after a response (an order's two emails, each step of an
+    # SMTP send bounded by 10 s) before it exits. Docker's default 10 s could cut that short.
+    stop_grace_period: 30s
     ports:
       - "127.0.0.1:${APP_PORT:-3120}:3000"
     environment:
@@ -48,7 +82,7 @@ services:
       retries: 5
 
   # Dedicated remotely-managed tunnel (created by cloudflare-tunnel.py). Ingress is set at
-  # Cloudflare: lightcommerce.fluxory.dev -> http://app:3000, everything else 404.
+  # Cloudflare: lightcommerce.fluxory.dev -> http://app:3000 (with --open), everything else 404.
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
@@ -58,17 +92,23 @@ services:
     depends_on:
       - app
 
-  # One-off, not started by `up`: gives an empty database its schema (see README).
-  schema:
-    profiles: [tools]
-    build:
-      context: ../..
-      target: schema
-    image: lightcommerce-schema
+  # `pnpm seed` (src/seed/): the demo company, and the owner account from SEED_OWNER_EMAIL and
+  # SEED_OWNER_PASSWORD (needed only to create it). Not started by `up`.
+  seed:
+    <<: *tools
+    entrypoint: ["./node_modules/.bin/payload", "run", "src/seed/cli.ts"]
     environment:
-      PAYLOAD_SECRET: ${PAYLOAD_SECRET:?set PAYLOAD_SECRET in deploy/demo/.env}
-    volumes:
-      - data:/app/data
+      <<: *tools-env
+      SEED_OWNER_PASSWORD: ${SEED_OWNER_PASSWORD:-}
+
+  # The nightly reset (src/seed/reset.ts), run by deploy/demo/reset.sh. Never gets the owner's
+  # password: it never creates an account. The Stripe key is for settling payments left behind.
+  reset:
+    <<: *tools
+    entrypoint: ["./node_modules/.bin/payload", "run", "src/seed/reset-cli.ts"]
+    environment:
+      <<: *tools-env
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
 
 volumes:
   data:

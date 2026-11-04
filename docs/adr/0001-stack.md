@@ -2,6 +2,8 @@
 
 Status: **Accepted** (2026-11-03, after the spike below: all six criteria pass on Payload 4.0.0-beta.6; the Stripe adapter is wrapped as section 8 of the design allows).
 
+In use: phase 1, built on this stack, has been live at https://lightcommerce.fluxory.dev since 2026-11-04 (S26: migrations, Stripe test mode, nightly reset; walkthrough in `docs/phase-1-walkthrough/`).
+
 ## Context
 
 light-commerce is a lightweight, modular CMS + shop for small businesses (GitHub issue #1). It must:

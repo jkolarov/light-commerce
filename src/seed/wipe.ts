@@ -14,9 +14,11 @@ import type { DemoContent } from './demo'
 
 const SHOWN = 5
 
-/** Documents of the collections the seed writes that are not part of the demo, one line per collection. */
-export async function findForeignContent(ctx: SeedContext, demo: DemoContent): Promise<string[]> {
-  const { payload } = ctx
+/** `locale`: the demo names pages by their French slug, so `where` is read in French. */
+type ForeignCheck = { collection: CollectionSlug; field: string; where: Where; locale: 'fr'; trash?: boolean }
+
+/** For each collection the seed writes: how to find its documents the demo doesn't have. */
+export function foreignChecks(ctx: SeedContext, demo: DemoContent): ForeignCheck[] {
   const checks: { collection: CollectionSlug; field: string; known: string[]; trash?: boolean }[] = [
     { collection: 'media', field: 'filename', known: demo.media.map((entry) => entry.file) },
     ...(ctx.modules.cms ? [{ collection: 'pages' as const, field: 'slug', known: demo.pages.map((page) => page.slug.fr) }] : []),
@@ -24,13 +26,24 @@ export async function findForeignContent(ctx: SeedContext, demo: DemoContent): P
       ? [{ collection: 'products' as const, field: 'slug', known: demo.products.map((product) => product.slug), trash: true }]
       : []),
   ]
+  return checks.map(({ collection, field, known, trash }) => ({
+    collection,
+    field,
+    where: { or: [{ [field]: { not_in: known } }, { [field]: { exists: false } }] },
+    locale: 'fr' as const,
+    ...(trash ? { trash } : {}),
+  }))
+}
+
+/** Documents of the collections the seed writes that are not part of the demo, one line per collection. */
+export async function findForeignContent(ctx: SeedContext, demo: DemoContent): Promise<string[]> {
+  const { payload } = ctx
   const lines: string[] = []
-  for (const { collection, field, known, trash } of checks) {
-    const where: Where = { or: [{ [field]: { not_in: known } }, { [field]: { exists: false } }] }
+  for (const { collection, field, where, locale, trash } of foreignChecks(ctx, demo)) {
     const { docs, totalDocs } = await payload.find({
       collection,
       where,
-      locale: 'fr',
+      locale,
       limit: SHOWN,
       depth: 0,
       overrideAccess: true,

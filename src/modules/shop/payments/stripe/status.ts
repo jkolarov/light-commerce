@@ -30,3 +30,26 @@ export async function paymentOutcome(paymentIntentId: string, settings: StripeSe
   if (status === 'processing') return 'processing'
   return 'failed'
 }
+
+/** Where a PaymentIntent stands once `closeOpenPaymentIntent` is done with it. */
+export type ClosedPaymentIntent = 'succeeded' | 'processing' | 'canceled' | 'unknown'
+
+/**
+ * For a script about to delete a payment's transaction (the demo's nightly reset): cancels the
+ * PaymentIntent at Stripe if it can still be paid (`requires_*`), so nobody pays it afterwards
+ * with no transaction left to make the order from. Paid (`succeeded`) and settling (`processing`)
+ * ones are left alone and said so. Throws when Stripe can't be reached or refuses the cancel.
+ */
+export async function closeOpenPaymentIntent(paymentIntentId: string, settings: StripeSettings = readStripeSettings()): Promise<ClosedPaymentIntent> {
+  const stripe = new Stripe(settings.secretKey, { appInfo: { name: 'light-commerce' } })
+  let status: Stripe.PaymentIntent.Status
+  try {
+    ;({ status } = await stripe.paymentIntents.retrieve(paymentIntentId))
+  } catch (error) {
+    if (error instanceof Stripe.errors.StripeInvalidRequestError && error.code === 'resource_missing') return 'unknown'
+    throw error
+  }
+  if (status === 'succeeded' || status === 'processing' || status === 'canceled') return status
+  await stripe.paymentIntents.cancel(paymentIntentId)
+  return 'canceled'
+}

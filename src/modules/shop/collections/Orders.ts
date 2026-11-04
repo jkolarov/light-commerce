@@ -72,6 +72,8 @@ function orderFields(currenciesConfig: CurrenciesConfig, defaults: Field[]): Fie
       label: { en: 'Needs attention', fr: 'À vérifier' },
       admin: {
         position: 'sidebar',
+        // A badge in the orders list, instead of true/false (../admin/AttentionCell.tsx).
+        components: { Cell: '/modules/shop/admin/AttentionCell#AttentionCell' },
         description: { en: 'Set when something needs you (stock ran out after the payment). Untick it once handled.', fr: 'Cochée quand quelque chose demande votre intervention (stock épuisé après le paiement). Décochez-la une fois réglé.' },
       },
     },
@@ -128,6 +130,8 @@ export const ordersOverride =
       group: shopGroup,
       defaultColumns: ['id', 'createdAt', 'customerEmail', 'amount', 'status', 'needsAttention'],
       listSearchableFields: ['customerEmail'],
+      // Paid payments that have no order to flag (../admin/FlaggedPayments.tsx).
+      components: { ...defaultCollection.admin?.components, beforeListTable: ['/modules/shop/admin/FlaggedPayments#FlaggedPayments'] },
     },
     hooks: { ...defaultCollection.hooks, beforeChange: [...(defaultCollection.hooks?.beforeChange ?? []), keepCreatedAt] },
   })

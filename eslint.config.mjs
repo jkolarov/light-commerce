@@ -72,12 +72,14 @@ const eslintConfig = [
     rules: { 'no-restricted-imports': forbid(coreToModules, stripeSdk) },
   },
   {
-    // Generated files: regenerate them with `pnpm generate`, never edit or lint them.
+    // Generated files: regenerate them with `pnpm generate`, never edit or lint them. Migrations
+    // are written by `pnpm payload migrate:create` (src/migrations/index.ts too).
     ignores: [
       '.next/',
       'next-env.d.ts',
       'src/payload-types.ts',
       'src/app/(payload)/admin/importMap.js',
+      'src/migrations/',
     ],
   },
 ]

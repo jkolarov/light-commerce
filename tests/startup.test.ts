@@ -4,6 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // (`vi.resetModules`), so a mock or an environment variable set in the test applies.
 const register = async () => (await import('@/instrumentation')).register()
 
+// A production start prepares the database (src/core/dbStartup.ts): watched here, never run, so no
+// test boots Payload against a real database file.
+const database = vi.hoisted(() => ({ prepared: 0 }))
+vi.mock('@/core/dbStartup', async (original) => ({
+  ...(await original<typeof import('@/core/dbStartup')>()),
+  prepareDatabaseOrStop: async () => void database.prepared++,
+}))
+
 const variables = ['NEXT_RUNTIME', 'NODE_ENV', 'CI', 'LIGHT_CI_MODULES'] as const
 
 // With the shop on, a server needs its Stripe keys (src/modules/shop/payments/stripe/startup.ts).
@@ -19,6 +27,7 @@ describe('server startup', () => {
 
   beforeEach(() => {
     vi.resetModules()
+    database.prepared = 0
     process.env.NEXT_RUNTIME = 'nodejs'
     delete process.env.LIGHT_CI_MODULES
     exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never)
@@ -79,6 +88,25 @@ describe('server startup', () => {
     vi.stubEnv('SMTP_HOST', 'mailpit')
     await register()
     expect(exit).not.toHaveBeenCalled()
+  })
+
+  it('prepares the database (pending migrations) as a production server starts, after the other checks', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('SMTP_HOST', 'mailpit')
+    await register()
+    expect(database.prepared).toBe(1)
+    expect(exit).not.toHaveBeenCalled()
+  })
+
+  it('leaves the database alone during `next build` and in development', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('SMTP_HOST', 'mailpit')
+    vi.stubEnv('NEXT_PHASE', 'phase-production-build')
+    await register()
+    vi.stubEnv('NEXT_PHASE', '')
+    vi.stubEnv('NODE_ENV', 'development')
+    await register()
+    expect(database.prepared).toBe(0)
   })
 
   it.each(Object.keys(stripeKeys))('stops the server when the shop is on and %s is missing', async (key) => {

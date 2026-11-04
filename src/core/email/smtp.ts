@@ -30,9 +30,12 @@ export function readSmtpSettings(env: Env = process.env): SmtpSettings | null {
 
 /**
  * How long the transport waits at each step (connecting, the server's greeting, any quiet moment
- * on the socket) before it gives up on a mail server. Short enough that a stuck server cannot
- * outlast Docker's stop grace or hold an order's emails for minutes (nodemailer waits up to 10
- * minutes by default).
+ * on the socket) before it gives up on a mail server, instead of nodemailer's minutes (up to 10).
+ * It bounds each step, not a whole send: one email to a server that stops answering gives up after
+ * about 10 s per stuck step, and an order sends two emails one after the other. So a graceful stop
+ * needs a grace of a few tens of seconds to drain them (the demo's compose sets 30 s; Docker's
+ * default is 10 s), and a server that answers slowly but steadily is not bounded at all. What a
+ * hard kill mid-send loses stays at most once (src/modules/shop/emails/send.ts).
  */
 export const SMTP_TIMEOUT_MS = 10_000
 

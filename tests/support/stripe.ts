@@ -116,6 +116,15 @@ export function fakeStatusModule() {
       if (!status) return 'unknown'
       return status === 'succeeded' ? 'succeeded' : status === 'processing' ? 'processing' : 'failed'
     },
+    /** Cancels an intent that can still be paid, as Stripe would. */
+    closeOpenPaymentIntent: async (id: string) => {
+      if (stripe.unreachable) throw new Error('Stripe cannot be reached')
+      const intent = stripe.intents.get(id)
+      if (!intent) return 'unknown'
+      if (intent.status === 'succeeded' || intent.status === 'processing' || intent.status === 'canceled') return intent.status
+      intent.status = 'canceled'
+      return 'canceled'
+    },
   }
 }
 

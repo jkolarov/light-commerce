@@ -12,14 +12,18 @@ import { onOrderFinalized } from '../orders/finalized'
 // - stopped after the claim, while sending: the order looks sent, and nothing tells it apart from
 //   one that was. Those stay at most once (see ./send.ts): a buyer never gets the same email twice.
 //
-// Only paid orders still waiting to be shipped (`processing`), whose payment is settled, and at
-// least `olderThanMinutes` old (a younger one may still be sending). A settlement that stopped
-// half-way is the reconcile job's own: it recovers it, and runs the seam then.
+// Only paid orders still waiting to be shipped (`processing`), whose payment is settled, at least
+// `olderThanMinutes` old (a younger one may still be sending) and at most `newerThanDays` old (a
+// confirmation days after the purchase would confuse more than help, and the owner has long seen
+// the order in the admin). A settlement that stopped half-way is the reconcile job's own: it
+// recovers it, and runs the seam then.
 
 export type MissedEmailsOptions = {
   now?: Date
   /** Orders at least this old (30 minutes). */
   olderThanMinutes?: number
+  /** Orders at most this old (3 days). */
+  newerThanDays?: number
   /** At most this many orders per run, the oldest first (100). */
   limit?: number
 }
@@ -28,9 +32,17 @@ export type MissedEmailsOptions = {
 export async function sendMissedOrderEmails(payload: Payload, options: MissedEmailsOptions = {}): Promise<number[]> {
   const now = options.now ?? new Date()
   const cutoff = new Date(now.getTime() - (options.olderThanMinutes ?? 30) * 60_000)
+  const oldest = new Date(now.getTime() - (options.newerThanDays ?? 3) * 86_400_000)
   const { docs } = await payload.find({
     collection: 'orders',
-    where: { and: [{ confirmationEmailSentAt: { exists: false } }, { status: { equals: 'processing' } }, { createdAt: { less_than: cutoff.toISOString() } }] },
+    where: {
+      and: [
+        { confirmationEmailSentAt: { exists: false } },
+        { status: { equals: 'processing' } },
+        { createdAt: { less_than: cutoff.toISOString() } },
+        { createdAt: { greater_than: oldest.toISOString() } },
+      ],
+    },
     sort: 'createdAt',
     limit: options.limit ?? 100,
     depth: 0,

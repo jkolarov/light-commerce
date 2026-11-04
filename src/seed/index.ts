@@ -37,6 +37,12 @@ export async function seedDemo(
     demoDir: string
     owner: SeedOwner
     force?: boolean
+    /**
+     * Leave content the demo doesn't have where it is, instead of refusing to run. For the nightly
+     * reset (./reset.ts), which deletes that content first and keeps only what a payment still in
+     * progress needs.
+     */
+    keepForeign?: boolean
     /** The database, as messages name it (DATABASE_URI without its query string). */
     target?: string
     log?: (line: string) => void
@@ -50,7 +56,7 @@ export async function seedDemo(
   if (!cms) ctx.skipped.push('pages and menus (the CMS is off)')
   if (!shop) ctx.skipped.push('products (the shop is off)')
 
-  if (!opts.force) {
+  if (!opts.force && !opts.keepForeign) {
     const foreign = await findForeignContent(ctx, demo)
     if (foreign.length) {
       throw new SeedError(
