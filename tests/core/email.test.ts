@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { getLightConfig } from '@/config'
 import { emailAdapter } from '@/core/email'
-import { missingSmtpProblem, readSmtpSettings, safeSenderName } from '@/core/email/smtp'
+import { missingSmtpProblem, readSmtpSettings, safeSenderName, SMTP_TIMEOUT_MS, smtpTransportOptions } from '@/core/email/smtp'
 import { stopIfSmtpIsMissing } from '@/core/email/startup'
 
 const { fromName, fromAddress } = getLightConfig().email
@@ -37,12 +37,31 @@ describe('email sender and transport', () => {
     expect(adapter.name).toBe('nodemailer')
   })
 
-  it('logs the email instead of failing when SMTP_HOST is not set', async () => {
+  it('logs the email instead of failing when SMTP_HOST is not set: who it was for and its subject, never its body', async () => {
     const info = vi.fn()
     const adapter = (await emailAdapter({ config: getLightConfig(), env: {} }))({ payload: { logger: { info } } as never })
     expect(adapter.name).toBe('log')
-    await expect(adapter.sendEmail({ to: 'a@b.test', subject: 'Hi', text: 'Hello' })).resolves.toBeUndefined()
-    expect(info).toHaveBeenCalledWith(expect.stringContaining('a@b.test'))
+    const body = 'Your order: https://shop.example/en/order/1?token=secret-token'
+    await expect(adapter.sendEmail({ to: 'a@b.test', subject: 'Hi', text: body, html: `<p>${body}</p>` })).resolves.toBeUndefined()
+    expect(info).toHaveBeenCalledTimes(1)
+    const logged = info.mock.calls[0]![0] as string
+    expect(logged).toContain('a@b.test')
+    expect(logged).toContain('"Hi"')
+    expect(logged).not.toContain('secret-token')
+    expect(logged).not.toContain('Your order')
+  })
+
+  it('gives up on a slow mail server after 10 seconds at each step, well inside Docker’s stop grace', () => {
+    expect(SMTP_TIMEOUT_MS).toBe(10_000)
+    expect(smtpTransportOptions({ host: 'mailpit', port: 1025 })).toEqual({
+      host: 'mailpit',
+      port: 1025,
+      secure: false,
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 10_000,
+    })
+    expect(smtpTransportOptions({ host: 'smtp.example', port: 465, auth: { user: 'u', pass: 'p' } })).toMatchObject({ secure: true, auth: { user: 'u', pass: 'p' } })
   })
 })
 
