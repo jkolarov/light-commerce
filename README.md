@@ -24,6 +24,21 @@ Use the CMS alone, the shop alone, or both.
 
 Later phases: outgoing webhooks, an MCP server, an embeddable buy button, redirects import, blog, more shipping and payment options, and embedding the booking platform's widgets.
 
+## Docker
+
+The production image is multi-stage (`Dockerfile`): Node 24 slim, Next.js standalone output, runs as the non-root `node` user, `HEALTHCHECK` on `GET /healthz` (answers `{ "ok": true }` without touching the database). One volume at `/app/data` holds the SQLite file (`DATABASE_URI`, `file:/app/data/light.db` in the container) and the uploads (`MEDIA_DIR`, `/app/data/media`).
+
+```bash
+cp .env.example .env            # set PAYLOAD_SECRET (openssl rand -hex 32); Mailpit alone does not need it
+docker compose -f compose.dev.yml up -d mailpit                 # email catcher, UI on http://127.0.0.1:8025
+docker compose -f compose.dev.yml run --rm schema               # first run only, see below
+docker compose -f compose.dev.yml --profile app up -d --build   # the app on http://127.0.0.1:3000
+```
+
+`NEXT_PUBLIC_*` values are inlined at build time, so they are build args (`NEXT_PUBLIC_SERVER_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`); runtime secrets are plain environment variables. Host ports are loopback only and can be changed with `APP_PORT`, `MAILPIT_SMTP_PORT`, `MAILPIT_UI_PORT`.
+
+**How a fresh container gets its schema (until the baseline migration, S26).** The server runs with `NODE_ENV=production`, where Payload never pushes the schema. On start it applies the migrations in `src/migrations/index.ts` (`prodMigrations`), which is empty for now. So a new volume needs a one-off push first: `docker compose -f compose.dev.yml run --rm schema` builds the `schema` image stage (full `node_modules` and the Payload CLI, `NODE_ENV` unset) and runs `payload run scripts/docker/push-schema.ts` against `/app/data/light.db`. Run it again after a deploy that changes the schema, in a terminal: Drizzle asks before any change that would lose data. Once S26 adds the baseline migration, the container migrates on start and `payload migrate` refuses a database made this way, so start that database fresh.
+
 ## Status
 
 Phase 1 in progress: a complete demo site for a fictional company at `lightcommerce.fluxory.dev`, with a few CMS pages, a few products and a working (test-mode) checkout.

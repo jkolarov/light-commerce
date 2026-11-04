@@ -1,0 +1,60 @@
+# Local development helpers. Everything binds to 127.0.0.1 only.
+#
+#   docker compose -f compose.dev.yml up -d mailpit        Mailpit: catches email, nothing leaves the machine
+#   docker compose -f compose.dev.yml --profile app up -d --build   also runs the app image
+#   docker compose -f compose.dev.yml run --rm schema       push the schema to an empty database (see README)
+#
+# Host ports are overridable (MAILPIT_SMTP_PORT, MAILPIT_UI_PORT, APP_PORT) in the shell or `.env`,
+# in case another stack already uses them. Point the app at Mailpit with SMTP_HOST=localhost and
+# SMTP_PORT=<MAILPIT_SMTP_PORT> (inside this compose: mailpit:1025).
+name: light-commerce
+
+services:
+  mailpit:
+    image: axllent/mailpit:v1.30
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  app:
+    profiles: [app]
+    image: ${APP_IMAGE:-light-commerce:dev}
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SERVER_URL: http://localhost:${APP_PORT:-3000}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    environment:
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:-}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOKS_SIGNING_SECRET: ${STRIPE_WEBHOOKS_SIGNING_SECRET:-}
+    volumes:
+      - data:/app/data
+    depends_on:
+      mailpit:
+        condition: service_healthy
+
+  schema:
+    profiles: [tools]
+    image: ${APP_IMAGE:-light-commerce:dev}-schema
+    build:
+      context: .
+      target: schema
+    environment:
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:-}
+    volumes:
+      - data:/app/data
+
+volumes:
+  data:
