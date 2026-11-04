@@ -14,7 +14,7 @@ export function CallToAction({ heading, text, link, locale }: Props) {
     <section className={`${container} ${blockSpacing}`}>
       <div className="flex flex-col items-start gap-7 rounded-[0.25rem] border border-text/10 bg-surface px-6 py-9 sm:px-10 sm:py-12 md:flex-row md:items-end md:justify-between md:gap-12 lg:px-14 lg:py-14">
         <div className="max-w-[36rem]">
-          <h2 className={sectionHeading}>{heading}</h2>
+          {heading?.trim() && <h2 className={sectionHeading}>{heading}</h2>}
           {sentence && <p className="mt-4 text-lg leading-[1.55] text-muted">{sentence}</p>}
         </div>
         <LinkButton link={link} locale={locale} className="shrink-0" />

@@ -6,7 +6,7 @@
 export const container = 'mx-auto w-full max-w-[76rem] px-5 sm:px-8 lg:px-12'
 
 /** Vertical space around a block. Consecutive blocks add theirs up, so keep it moderate. */
-export const blockSpacing = 'py-10 sm:py-14 lg:py-16'
+export const blockSpacing = 'py-8 sm:py-10 lg:py-12'
 
 /**
  * Keyboard focus: a ring in `primary` with a `background` gap, visible on the page, on `surface`
