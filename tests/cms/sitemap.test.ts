@@ -31,7 +31,7 @@ describe.skipIf(!getLightConfig().modules.cms)('sitemap entries', () => {
   })
 
   it('lists published pages only, per language, with alternates and absolute URLs', async () => {
-    const entries = await pageSitemapEntries(payload, 'https://example.com/')
+    const entries = await pageSitemapEntries(payload, 'https://example.com/', 'fr')
     const urls = entries.map((e) => e.url)
     expect(urls).toContain('https://example.com/fr/a-propos')
     expect(urls).toContain('https://example.com/en/about')

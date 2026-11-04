@@ -15,8 +15,13 @@ export function buildRobots(site: Site): MetadataRoute.Robots {
   }
 }
 
-/** Headers for every route (media included) when the site is not indexable; none otherwise. */
-export function noindexHeaders(site: Pick<LightConfig['site'], 'indexable'>) {
-  if (site.indexable) return []
-  return [{ source: '/:path*', headers: [{ key: 'X-Robots-Tag', value: NOINDEX_VALUE }] }]
+/** `X-Robots-Tag` for every response when the site is not indexable; none otherwise. */
+export function noindexHeaders(site: Pick<LightConfig['site'], 'indexable'>): Record<string, string> {
+  return site.indexable ? {} : { 'X-Robots-Tag': NOINDEX_VALUE }
+}
+
+/** Sets the noindex header on a response (the proxy calls this). */
+export function applyNoindex(response: Response, site: Pick<LightConfig['site'], 'indexable'>): Response {
+  for (const [key, value] of Object.entries(noindexHeaders(site))) response.headers.set(key, value)
+  return response
 }

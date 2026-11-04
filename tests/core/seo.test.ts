@@ -6,7 +6,7 @@ describe('robots and noindex', () => {
   it('disallows everything and sends noindex when not indexable', () => {
     const site = { url: 'https://demo.example.com', indexable: false }
     expect(buildRobots(site)).toEqual({ rules: { userAgent: '*', disallow: '/' } })
-    expect(noindexHeaders(site)).toEqual([{ source: '/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] }])
+    expect(noindexHeaders(site)).toEqual({ 'X-Robots-Tag': 'noindex, nofollow' })
   })
 
   it('allows all except admin and api, links the sitemap, and sends no header when indexable', () => {
@@ -15,6 +15,6 @@ describe('robots and noindex', () => {
       rules: { userAgent: '*', allow: '/', disallow: ['/admin', '/api'] },
       sitemap: 'https://shop.example.com/sitemap.xml',
     })
-    expect(noindexHeaders(site)).toEqual([])
+    expect(noindexHeaders(site)).toEqual({})
   })
 })

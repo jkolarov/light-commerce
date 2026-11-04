@@ -30,5 +30,6 @@ export async function getFooterText(locale: Locale): Promise<string | null> {
 /** Sitemap entries for the published pages (S12). */
 export async function getSitemapEntries(): Promise<SitemapEntry[]> {
   const payload = await getPayload({ config })
-  return pageSitemapEntries(payload, getLightConfig().site.url)
+  const { site, locales } = getLightConfig()
+  return pageSitemapEntries(payload, site.url, locales.default)
 }
