@@ -1,0 +1,4 @@
+# pnpm 12 ignores the "pnpm" field in package.json. Build scripts must be allowed here,
+# or the install fails with ERR_PNPM_IGNORED_BUILDS. Approve with `pnpm approve-builds <pkg>`.
+allowBuilds:
+  esbuild: true

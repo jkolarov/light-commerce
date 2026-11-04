@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # A new push to a PR cancels its older run; runs on main always finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  # Harmless placeholders so the config loads and the build runs. Not secrets, not real keys.
+  PAYLOAD_SECRET: ci-placeholder-payload-secret
+  DATABASE_URI: file:./data/ci.db
+  NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+  STRIPE_SECRET_KEY: ci-placeholder-stripe-secret
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ci-placeholder-stripe-publishable
+  STRIPE_WEBHOOKS_SIGNING_SECRET: ci-placeholder-stripe-webhook-secret
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  check:
+    # Every step runs a package.json script, so CI and local runs stay the same.
+    # S03 turns this job into a matrix of setups (both modules, CMS only, shop only):
+    # add `strategy.matrix` here and pass the setup to the steps through `env`.
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6 # pnpm version from `packageManager` in package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.22.2
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+
+  generated:
+    # Generated files reflect the default setup (both modules on), so this stays one job.
+    name: Generated files are up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.22.2
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm generate:check
