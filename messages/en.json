@@ -1,6 +1,58 @@
 {
-  "placeholder": {
-    "title": "Site under construction",
-    "body": "Pages are coming soon."
+  "common": {
+    "home": "Home",
+    "loading": "Loading…",
+    "error": "Something went wrong. Please try again.",
+    "notFound": "Page not found",
+    "backToHome": "Back to the home page",
+    "close": "Close",
+    "previous": "Previous",
+    "next": "Next",
+    "language": "Language"
+  },
+  "nav": {
+    "menu": "Menu",
+    "shop": "Shop",
+    "cart": "Cart",
+    "skipToContent": "Skip to content"
+  },
+  "footer": {
+    "contact": "Contact",
+    "allRightsReserved": "All rights reserved."
+  },
+  "shop": {
+    "title": "Shop",
+    "price": "Price",
+    "addToCart": "Add to cart",
+    "outOfStock": "Out of stock",
+    "inStock": "In stock",
+    "noProducts": "No products yet."
+  },
+  "cart": {
+    "title": "Your cart",
+    "empty": "Your cart is empty.",
+    "quantity": "Quantity",
+    "remove": "Remove",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "total": "Total",
+    "checkout": "Checkout",
+    "continueShopping": "Continue shopping"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "email": "Email",
+    "shippingAddress": "Shipping address",
+    "payment": "Payment",
+    "pay": "Pay now",
+    "processing": "Processing your payment…",
+    "paymentFailed": "The payment did not go through. You have not been charged."
+  },
+  "order": {
+    "title": "Order confirmation",
+    "thankYou": "Thank you for your order!",
+    "number": "Order number",
+    "confirmationSent": "We sent a confirmation to your email.",
+    "status": "Status"
   }
 }
