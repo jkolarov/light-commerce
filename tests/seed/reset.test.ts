@@ -58,8 +58,8 @@ describe.skipIf(!(modules.cms && modules.shop))('the nightly reset', () => {
     const created = await payload.create({ collection: 'carts', data: { items } as Cart, depth: 0, overrideAccess: false })
     return { id: created.id, secret: created.secret! }
   }
-  const startPayment = async (items: { product: number; quantity: number }[]) => {
-    const cart = await newCart(items)
+  const startPayment = async (items: { product: number; quantity: number }[], existing?: { id: number; secret: string }) => {
+    const cart = existing ?? (await newCart(items))
     const { total } = await cartLoad.priceGuestCart(payload, { items })
     const started = await payments.startStripePayment(payload, { cart, customerEmail: 'camille@example.com', address, expectedTotal: total })
     if (!started.ok) throw new Error(`payment not started: ${started.reason}`)
@@ -199,6 +199,59 @@ describe.skipIf(!(modules.cms && modules.shop))('the nightly reset', () => {
     expect(carts).toContain(during.cart)
     expect(await all('transactions')).toContain(during.transaction)
     expect(stripe.intents.get(during.paymentIntentId)?.status).toBe('requires_payment_method')
+  }, 120_000)
+
+  it('keeps the cart of a payment started while it runs, even when the cart is older', async () => {
+    const items = [{ product: day.demoProduct.id, quantity: 1 }]
+    const cart = await newCart(items)
+    const startedAt = new Date()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    const late = await startPayment(items, cart)
+    await resetDemo(payload, { demoDir: DEMO_DIR, owner: { email: owner.email }, now: startedAt, log: () => {} })
+    expect(await all('carts')).toContain(cart.id)
+    expect(await all('transactions')).toContain(late.transaction)
+  }, 120_000)
+
+  it('deletes no transaction, and says why, when Stripe knows none of the payments (a wrong key that night)', async () => {
+    const paid = await startPayment([{ product: day.demoProduct.id, quantity: 1 }])
+    stripe.pay(paid.paymentIntentId)
+    expect(await webhook(succeededEvent(paid.paymentIntentId))).toBe(200)
+    const old = await startPayment([{ product: day.demoProduct.id, quantity: 1 }])
+    await touchedAt(old.transaction, hoursAgo(30))
+    // Another account's key: Stripe knows neither the settled payment nor the old one.
+    const saved = [paid, old].map(({ paymentIntentId }) => [paymentIntentId, stripe.intents.get(paymentIntentId)!] as const)
+    for (const [id] of saved) stripe.intents.delete(id)
+    const nightLines: string[] = []
+    try {
+      await resetDemo(payload, { demoDir: DEMO_DIR, owner: { email: owner.email }, log: (line) => nightLines.push(line) })
+      expect(await all('transactions')).toEqual(expect.arrayContaining([paid.transaction, old.transaction]))
+      expect(await all('carts')).toEqual(expect.arrayContaining([paid.cart, old.cart]))
+      expect(nightLines.join('\n')).toMatch(/Stripe knew none of the \d+ payment\(s\) it was asked about.*STRIPE_SECRET_KEY.*no transaction was deleted/s)
+    } finally {
+      for (const [id, intent] of saved) stripe.intents.set(id, intent)
+    }
+    // The right key again: both go the next night.
+    await resetDemo(payload, { demoDir: DEMO_DIR, owner: { email: owner.email }, log: () => {} })
+    expect(await all('transactions')).not.toContain(paid.transaction)
+    expect(await all('transactions')).not.toContain(old.transaction)
+  }, 180_000)
+
+  it('lets a payment Stripe doesn’t know go once it is a day old, when Stripe knows the settled ones', async () => {
+    const paid = await startPayment([{ product: day.demoProduct.id, quantity: 1 }])
+    stripe.pay(paid.paymentIntentId)
+    expect(await webhook(succeededEvent(paid.paymentIntentId))).toBe(200)
+    const old = await startPayment([{ product: day.demoProduct.id, quantity: 1 }])
+    await touchedAt(old.transaction, hoursAgo(30))
+    const young = await startPayment([{ product: day.demoProduct.id, quantity: 1 }])
+    await touchedAt(young.transaction, hoursAgo(3))
+    // Its test data deleted at Stripe, say: the old payments are gone there, the key is right.
+    stripe.intents.delete(old.paymentIntentId)
+    stripe.intents.delete(young.paymentIntentId)
+    await resetDemo(payload, { demoDir: DEMO_DIR, owner: { email: owner.email }, log: () => {} })
+    const left = await all('transactions')
+    expect(left).not.toContain(paid.transaction)
+    expect(left).not.toContain(old.transaction)
+    expect(left).toContain(young.transaction)
   }, 120_000)
 
   it('deletes nothing when the owner account isn’t there: it never creates one without a password', async () => {
