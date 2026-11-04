@@ -75,6 +75,44 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm generate:check
 
+  e2e:
+    # The end-to-end test (S25): browse → cart → pay → order in Chromium, against the dev server
+    # with both modules on (design 4.9). CI has no Stripe keys and must never get them (the repo is
+    # public), so it pays a fake Stripe: tests/e2e/stripe-stub/ (E2E_STRIPE=stub, see
+    # tests/e2e/support/env.ts). Locally `pnpm test:e2e` pays in Stripe's test mode.
+    name: "End-to-end: browse, cart, pay, order (Stripe stubbed)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      E2E_STRIPE: stub
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.22.2
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Playwright's version (the browser cache key)
+        id: playwright
+        run: echo "version=$(node -p "require('./package.json').devDependencies['@playwright/test']")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      # Chromium only. With the cache hit it only installs the system libraries it needs.
+      - run: npx playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - name: Upload the report, traces and screenshots
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
   docker:
     # Builds the production image on every PR. Nothing is pushed.
     name: Docker image builds
