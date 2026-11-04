@@ -1,12 +1,12 @@
 import { handleEndpoints, type Payload } from 'payload'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, expect, it } from 'vitest'
 
-import { getLightConfig } from '@/config'
 import type { User } from '@/payload-types'
 
+import { describeWithCms } from '../support/modules'
 import { startPayload, type TestPayload } from '../support/payload'
 
-describe.skipIf(!getLightConfig().modules.cms)('header and footer menus', () => {
+describeWithCms('header and footer menus', () => {
   let test: TestPayload
   let payload: Payload
   let staff: User
