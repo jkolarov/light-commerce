@@ -14,11 +14,23 @@
     "menu": "Menu",
     "shop": "Shop",
     "cart": "Cart",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "mainLabel": "Main menu",
+    "footerLabel": "Footer"
   },
   "footer": {
     "contact": "Contact",
-    "allRightsReserved": "All rights reserved."
+    "allRightsReserved": "All rights reserved.",
+    "copyright": "© {year} {siteName}"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "text": "There is no page at this address. It may have been renamed, or the link may contain a typo."
+  },
+  "error": {
+    "title": "This page could not be shown",
+    "text": "The site ran into a problem while preparing this page. Try again in a moment; if it keeps happening, start again from the home page.",
+    "retry": "Try again"
   },
   "shop": {
     "title": "Shop",

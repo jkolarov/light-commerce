@@ -24,6 +24,8 @@ export default defineLightConfig({
       text: '#1E2A20',
       muted: '#52604F',
     },
+    // Fonts the theme ships, and how to add one: src/theme/fonts/index.ts. A system stack
+    // ending in a generic family ("Georgia, serif") also works.
     fonts: { heading: 'Spectral', body: 'Source Sans 3' },
     // public/logo.svg
     logo: '/logo.svg',
