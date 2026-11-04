@@ -17,8 +17,13 @@
   --lc-font-body: system-ui, sans-serif;
 }
 
-/* Tailwind 4 theme mapped to the variables. `inline` keeps the var() reference in utilities. */
+/*
+ * Tailwind 4 theme mapped to the variables. `inline` keeps the var() reference in utilities.
+ * The default palette (red-500, white, black, ...) is switched off, so the only colours are the
+ * theme's. `transparent`, `current` and `inherit` still work: they are not theme colours.
+ */
 @theme inline {
+  --color-*: initial;
   --color-primary: var(--lc-color-primary);
   --color-primary-contrast: var(--lc-color-primary-contrast);
   --color-background: var(--lc-color-background);
