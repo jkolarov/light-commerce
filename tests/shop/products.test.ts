@@ -125,6 +125,54 @@ describeWithShop('products', () => {
     }
   })
 
+  it('never takes stock back from a saved version: sales since the last save are kept', async () => {
+    const product = await publish({ title: 'Stock vivant', inventory: 20 })
+    // A sale: the plugin takes stock with a raw `$inc` on the live document, never on its versions.
+    const sell = (quantity: number) =>
+      payload.db.updateOne({ collection: 'products', id: product.id, data: { inventory: { $inc: -quantity } } as never })
+    const live = async () =>
+      ((await payload.db.findOne({ collection: 'products', where: { id: { equals: product.id } } })) as Product).inventory
+    const editView = () =>
+      payload.findByID({ collection: 'products', id: product.id, draft: true, locale: 'fr', overrideAccess: false, user: asStaff() })
+    const save = (data: Partial<Product>, draft = false) =>
+      payload.update({ collection: 'products', id: product.id, data, draft, locale: 'fr', overrideAccess: false, user: asStaff() })
+
+    await sell(3)
+    // The admin's edit view and list show the live stock.
+    expect((await editView()).inventory).toBe(17)
+    const list = await payload.find({ collection: 'products', where: { id: { equals: product.id } }, draft: true, overrideAccess: false, user: asStaff() })
+    expect(list.docs[0]!.inventory).toBe(17)
+
+    // The owner fixes the name, sending back what the edit view showed, and publishes.
+    await save({ ...(await editView()), title: 'Stock vivant !', _status: 'published' })
+    expect(await live()).toBe(17)
+
+    // A draft, more sales, then a publish that does not send the stock (an API or script call).
+    await save({ title: 'Stock vivant (brouillon)', _status: 'draft' }, true)
+    await sell(2)
+    expect((await editView()).inventory).toBe(15)
+    await save({ _status: 'published' })
+    expect(await live()).toBe(15)
+
+    // A number the owner types is written as is.
+    await save({ inventory: 50, _status: 'published' })
+    expect(await live()).toBe(50)
+
+    // Server code without a user (seed, scripts) keeps the live stock too.
+    await sell(1)
+    await payload.update({ collection: 'products', id: product.id, data: { title: 'Par script', _status: 'published' }, locale: 'fr', overrideAccess: true })
+    expect(await live()).toBe(49)
+
+    // Restoring an old version brings back its text, not its stock.
+    const { docs: versions } = await payload.findVersions({
+      collection: 'products', where: { parent: { equals: product.id } }, sort: 'createdAt', limit: 1, overrideAccess: true,
+    })
+    await sell(4)
+    await payload.restoreVersion({ collection: 'products', id: versions[0]!.id, overrideAccess: false, user: asStaff() })
+    expect((await payload.findByID({ collection: 'products', id: product.id, locale: 'fr', overrideAccess: true })).title).toBe('Stock vivant')
+    expect(await live()).toBe(45)
+  })
+
   it('takes its photos from media', async () => {
     const product = await publish({ title: 'Mauve', images: [photoId] })
     const read = await payload.findByID({ collection: 'products', id: product.id, overrideAccess: false })

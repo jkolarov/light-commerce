@@ -6,6 +6,7 @@ import { forcePublishedForPublic, readVersions } from '@/core/access/drafts'
 
 import { shopGroup } from './admin'
 import { mapFields, requiredInDefaultLocale, slugify, wholeCents, wholeUnits } from './fields'
+import { keepLiveStockOnRestore, showLiveStock } from './liveStock'
 
 // Products: the plugin's collection (stock in `inventory`, price in `priceInEUR`, in cents) plus
 // the text and photos the shop shows. Name, summary, description and facts are per language,
@@ -78,7 +79,24 @@ const priceAndStock = (field: Field): Field => {
   if (field.type === 'checkbox' && /^priceIn[A-Z]{3}Enabled$/.test(field.name)) return { ...field, defaultValue: true }
   if (field.type !== 'number' || field.hasMany) return field
   if (/^priceIn[A-Z]{3}$/.test(field.name)) return { ...field, validate: wholeCents }
-  if (field.name === 'inventory') return { ...field, validate: wholeUnits }
+  if (field.name === 'inventory') {
+    return {
+      ...field,
+      validate: wholeUnits,
+      hooks: {
+        ...field.hooks,
+        afterRead: [...(field.hooks?.afterRead ?? []), showLiveStock],
+        beforeChange: [...(field.hooks?.beforeChange ?? []), keepLiveStockOnRestore],
+      },
+      admin: {
+        ...field.admin,
+        description: {
+          en: 'Units in stock now. Sales take from it; a new number takes effect when you publish.',
+          fr: 'Unités en stock. Chaque vente en retire ; un nouveau nombre s’applique à la publication.',
+        },
+      },
+    }
+  }
   return field
 }
 

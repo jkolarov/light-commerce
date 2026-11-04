@@ -542,6 +542,9 @@ export interface Product {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Units in stock now. Sales take from it; a new number takes effect when you publish.
+   */
   inventory?: number | null;
   priceInEUREnabled?: boolean | null;
   priceInEUR?: number | null;
