@@ -9,9 +9,14 @@ import { getLightConfig } from '@/config'
 import type { Locale } from '@/core/i18n/locales'
 import { asMedia, shareImage } from '@/theme/media'
 
+import { currentCart, quantityInCart } from '../cart/current'
+import { addableQuantity } from '../cart/rules'
+import { AddToCart } from '../components/AddToCart'
 import { ProductDetails } from '../components/ProductDetails'
+import { shopConfig } from '../config'
 import { findPublishedLocales, findPublishedProduct } from './load'
 import { productPath, shopPath } from './paths'
+import { productPrice } from './price'
 
 // The shop's routes. `src/app/(frontend)/[locale]/shop/page.tsx` and `shop/[slug]/page.tsx` are
 // thin wrappers around these. Everything reads Payload at request time: nothing here is built
@@ -24,8 +29,24 @@ const loadProduct = cache(async (locale: Locale, slug: string) => findPublishedP
 export async function ProductPage({ locale, slug }: { locale: Locale; slug: string }) {
   const product = await loadProduct(locale, slug)
   if (!product) notFound()
+  const { currency } = shopConfig()
+  const price = productPrice(product, currency)
+  const inCart = quantityInCart(await currentCart(locale), product.id)
+  // ProductDetails draws it only for a product that can be bought (a price, some stock).
+  const addToCart =
+    price === null ? null : (
+      <AddToCart
+        productId={product.id}
+        name={product.title ?? ''}
+        unitPrice={price}
+        currency={currency}
+        locale={locale}
+        addable={addableQuantity(product, inCart)}
+        inCart={inCart}
+      />
+    )
   // No <main> here: the locale layout draws the page's one <main> around every route.
-  return <ProductDetails product={product} locale={locale} />
+  return <ProductDetails product={product} locale={locale} addToCart={addToCart} />
 }
 
 function absolute(path: string): string {

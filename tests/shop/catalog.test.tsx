@@ -4,7 +4,7 @@ import path from 'node:path'
 
 import type { Payload } from 'payload'
 import { isValidElement, type ReactElement } from 'react'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import type { Product } from '@/payload-types'
 
@@ -18,6 +18,11 @@ import { paragraph, richText, text } from './products.fixtures'
 // (they import the composed config, tests/support/payload.ts).
 
 const NOT_FOUND = { digest: 'NEXT_HTTP_ERROR_FALLBACK;404' }
+
+// The product page reads the visitor's cart from its cookie (S16). These renders run outside a
+// request: a visitor without a cart.
+vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => undefined }) }))
+
 const SITE = 'https://lightcommerce.fluxory.dev'
 
 describeWithShop('shop pages', () => {
@@ -190,6 +195,13 @@ describeWithShop('shop pages', () => {
       expect(html).toContain('Le tilleul se cueille.')
       expect(html).toContain('€8.50')
       expect(html).toContain('>Sold out</span>')
+    })
+
+    it('offers add-to-cart, with the price, for a product that can be bought', async () => {
+      const Page = await productRoute()
+      const html = await renderRoute(Page({ params: Promise.resolve({ locale: 'fr', slug: 'verveine-odorante' }) }))
+      expect(html).toMatch(/<button type="submit"[^>]*><span>Ajouter au panier<\/span><span[^>]*>7,90\u00a0€<\/span><\/button>/)
+      expect(html).toMatch(/<input type="number"[^>]*max="48"/)
     })
 
     it('answers 404 for an unknown, unpublished or trashed product', async () => {
