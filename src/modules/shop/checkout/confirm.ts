@@ -4,18 +4,18 @@ import type { Locale } from '@/core/i18n/locales'
 
 import { cartPath } from '../cart/paths'
 import type { CartRef } from '../cart/load'
-import { confirmStripePayment, findPaymentTransaction, isPaymentIntentId } from '../payments/stripe/payments'
+import { finalizePayment } from '../orders/finalizePayment'
+import { findPaymentTransaction, isPaymentIntentId } from '../payments/stripe/payments'
 import { paymentOutcome } from '../payments/stripe/status'
 import { orderPath, paymentFailedPath, paymentReceivedPath } from './paths'
 
 // The browser's way back after a payment: Stripe's return URL, and where the form sends the
-// browser once a card payment went through. It settles the payment through the plugin's
-// `confirm-order` (via the Stripe wrapper's `confirmOrder`, the same one S18's webhook uses), so
-// an order is created once, whichever comes first.
+// browser once a card payment went through. It settles the payment with `finalizePayment`, the
+// same function Stripe's webhook calls, so an order is created once, whichever comes first.
 //
-// Settlement rule (plan, "Orders"): when `confirm-order` does not answer with an order after a
-// payment that succeeded, that is "payment received, order pending", never "payment failed". The
-// webhook (S18) creates the order. The visitor sees a calm "payment received" page.
+// Settlement rule (plan, "Orders"): when no order comes back after a payment that succeeded, that
+// is "payment received, order pending", never "payment failed": the webhook creates the order.
+// The visitor sees a calm "payment received" page.
 
 export type CheckoutOutcome =
   | { kind: 'order'; orderId: number | string; accessToken: string | null }
@@ -44,11 +44,15 @@ async function holdsCart(payload: Payload, ref: CartRef, transactionCart: unknow
   return Boolean(cart)
 }
 
-/** The order's access token (S18 adds the field), or `null`. */
-async function accessTokenOf(payload: Payload, orderId: unknown): Promise<string | null> {
-  const order = await payload.findByID({ collection: 'orders', id: orderId as number, depth: 0, overrideAccess: true, disableErrors: true })
-  const token = (order as { accessToken?: unknown } | null)?.accessToken
-  return typeof token === 'string' && token ? token : null
+/** The order for the browser holding the payment's cart, or `null` when none comes back. */
+async function orderFor(payload: Payload, paymentIntentId: string): Promise<CheckoutOutcome | null> {
+  try {
+    const { order } = await finalizePayment(payload, paymentIntentId)
+    return { kind: 'order', orderId: order.id, accessToken: order.accessToken ?? null }
+  } catch (error) {
+    payload.logger.warn({ msg: `Shop: no order yet for PaymentIntent ${paymentIntentId} (${error instanceof Error ? error.message : 'unknown'}); the webhook settles it.` })
+    return null
+  }
 }
 
 /**
@@ -64,8 +68,8 @@ export async function confirmCheckout(payload: Payload, input: { paymentIntentId
 
   const holder = cart && (await holdsCart(payload, cart, transaction.cart)) ? cart : null
   if (holder && transaction.status === 'succeeded' && transaction.order) {
-    const orderId = typeof transaction.order === 'object' ? transaction.order.id : transaction.order
-    return { kind: 'order', orderId, accessToken: await accessTokenOf(payload, orderId) }
+    const settled = await orderFor(payload, paymentIntentId)
+    if (settled) return settled
   }
 
   // Stripe first: a payment that did not go through (a declined card, a cancelled bank page)
@@ -80,17 +84,14 @@ export async function confirmCheckout(payload: Payload, input: { paymentIntentId
   if (outcome === 'failed') return { kind: 'failed' }
 
   if (holder && outcome === 'succeeded') {
-    const confirmed = await confirmStripePayment(payload, { cart: holder, customerEmail: transaction.customerEmail ?? '', paymentIntentId })
-    if (confirmed.ok) return { kind: 'order', orderId: confirmed.orderId, accessToken: confirmed.accessToken }
+    const settled = await orderFor(payload, paymentIntentId)
+    if (settled) return settled
   }
-  // Paid, or being settled by Stripe, and no order from here: the webhook creates it (S18).
+  // Paid, or being settled by Stripe, and no order from here: the webhook creates it.
   return { kind: 'received' }
 }
 
-/**
- * Where the browser goes next. The order page needs the order's access token; until orders have
- * one (S18), a paid order shows "payment received".
- */
+/** Where the browser goes next: the order's page needs its access token. */
 export function outcomePath(locale: Locale, outcome: CheckoutOutcome): string {
   switch (outcome.kind) {
     case 'order':

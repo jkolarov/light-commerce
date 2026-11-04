@@ -3,6 +3,7 @@ import type { PaymentAdapter } from '@payloadcms/plugin-ecommerce/types'
 import type { Field } from 'payload'
 
 import { readStripeSettings, type StripeSettings } from './env'
+import { webhookEndpoint } from './webhook'
 import { withCheckoutRules } from './wrap'
 
 // The shop's Stripe payment method: the ecommerce plugin's built-in Stripe adapter, wrapped
@@ -10,8 +11,9 @@ import { withCheckoutRules } from './wrap'
 // Card fields are drawn by Stripe's Payment Element in the browser (./usePaymentElement.ts): card
 // data never reaches this server.
 //
-// The plugin registers the adapter's endpoints under /api/payments/stripe: `initiate`,
-// `confirm-order` and `webhooks`. Server code reaches the first two through ./payments.ts.
+// The plugin registers the adapter's endpoints under /api/payments/stripe: `initiate` and
+// `confirm-order` (its own; server code reaches them through ./payments.ts), and `webhooks`, the
+// shop's own (./webhook.ts), in place of the built-in adapter's.
 
 /** One transaction per PaymentIntent, enforced by the database (a unique index). */
 const uniquePaymentIntent = (field: Field): Field =>
@@ -23,9 +25,7 @@ export function stripePaymentMethod(settings: StripeSettings = readStripeSetting
     secretKey: settings.secretKey,
     publishableKey: settings.publishableKey,
     webhookSecret: settings.webhookSecret,
-    // S18 adds `payment_intent.succeeded`, so an order exists even when the browser never returns.
-    webhooks: {},
     groupOverrides: { fields: ({ defaultFields }) => defaultFields.map(uniquePaymentIntent) },
   })
-  return withCheckoutRules(adapter)
+  return { ...withCheckoutRules(adapter), endpoints: [webhookEndpoint(settings)] }
 }

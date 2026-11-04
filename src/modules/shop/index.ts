@@ -48,7 +48,7 @@ export const shopPlugin =
       // Guest carts, reached with the cart's secret. The matcher survives lines whose product was deleted.
       carts: { allowGuestCarts: true, cartItemMatcher, cartsCollectionOverride: cartsOverride },
       addresses: { addressesCollectionOverride: addressesOverride },
-      orders: { ordersCollectionOverride: ordersOverride },
+      orders: { ordersCollectionOverride: ordersOverride(currenciesConfig) },
       transactions: { transactionsCollectionOverride: transactionsOverride(currenciesConfig) },
       // Variants are off: they add three collections and the plugin skips their stock check.
       products: { variants: false, productsCollectionOverride: productsOverride },
