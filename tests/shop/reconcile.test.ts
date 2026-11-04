@@ -93,6 +93,16 @@ describeWithShop('reconciling payments left behind', () => {
     expect((await transaction(stuck.id)).status).toBe('succeeded')
   })
 
+  it('still makes the order when a payment expired here is paid after all (a tab left open a day)', async () => {
+    const late = await started()
+    expect(resultFor(await reconcile.reconcilePayments(payload, { now: later(25) }), late.id)).toMatchObject({ action: 'expired' })
+    stripe.pay(late.stripe!.paymentIntentID!)
+    const { finalizePayment } = await import('@/modules/shop/orders/finalizePayment')
+    const { order } = await finalizePayment(payload, late.stripe!.paymentIntentID!)
+    expect(await ordersOf(late.id)).toEqual([expect.objectContaining({ id: order.id })])
+    expect((await transaction(late.id)).status).toBe('succeeded')
+  })
+
   it('leaves settled payments alone', async () => {
     const done = await started()
     stripe.pay(done.stripe!.paymentIntentID!)

@@ -11,7 +11,8 @@ import { finalizePayment } from './finalizePayment'
 //
 // - `pending`, and paid at Stripe: the webhook never got through. Settled with `finalizePayment`.
 // - `pending`, and not paid (a declined card, an abandoned checkout), for more than a day:
-//   marked `expired`. Before that the visitor may still pay it from the same checkout page.
+//   marked `expired`. Before that the visitor may still pay it from the same checkout page; if it
+//   is paid after all, `finalizePayment` puts it back to `pending` and settles it.
 // - `processing` for a while: a settlement that stopped half-way (the server stopped, or the
 //   plugin threw after its claim, for example on a product deleted for good). If an order already
 //   references it, the transaction is marked `succeeded` and the order is flagged, because the

@@ -44,6 +44,16 @@ export async function finalizePayment(payload: Payload, paymentIntentId: string)
   let order = settled ? await payload.findByID({ collection: 'orders', id: settled as number, depth: 0, overrideAccess: true, disableErrors: true }) : null
 
   if (!order) {
+    if (transaction.status === 'expired') {
+      // The reconcile job expired it as unpaid, but Stripe says it was paid after all (a checkout
+      // left open for a day): back to pending, once, so the plugin can claim it.
+      await payload.db.updateOne({
+        collection: 'transactions',
+        where: { and: [{ id: { equals: transaction.id } }, { status: { equals: 'expired' } }] },
+        data: { status: 'pending' },
+        options: { atomic: true },
+      })
+    }
     const cartId = idOf(transaction.cart)
     // The cart's secret is locked for normal reads: trusted server code reads it from the database.
     const cart = cartId ? ((await payload.db.findOne({ collection: 'carts', where: { id: { equals: cartId } } })) as { secret?: unknown } | null) : null
