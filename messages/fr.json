@@ -162,5 +162,48 @@
       "refunded": "Remboursée"
     },
     "backToShop": "Retour à la boutique"
+  },
+  "email": {
+    "summary": "Votre commande",
+    "orderNumber": "Commande n° {number}",
+    "placedOn": "Passée le {date}",
+    "quantity": "Quantité : {count}",
+    "unavailableName": "Produit indisponible",
+    "subtotal": "Sous-total",
+    "shipping": "Livraison",
+    "total": "Total",
+    "row": "{label} : {value}",
+    "pricesIncludeTax": "Prix TTC, TVA {rate} % incluse.",
+    "shippingAddress": "Adresse de livraison",
+    "confirmation": {
+      "subject": "Votre commande n° {number} est confirmée",
+      "preview": "Paiement reçu : nous préparons votre commande.",
+      "greeting": "Bonjour {name},",
+      "greetingNoName": "Bonjour,",
+      "intro": "Merci pour votre commande. Votre paiement est bien reçu, et nous la préparons.",
+      "viewOrder": "Voir ma commande",
+      "viewOrderText": "Votre commande en ligne : {url}",
+      "keepLink": "Ce lien mène à votre commande : gardez cet e-mail, et ne le transférez pas.",
+      "question": "Une question, ou quelque chose ne va pas ? Répondez à cet e-mail, ou écrivez-nous à {address}.",
+      "signOff": "À bientôt,"
+    },
+    "owner": {
+      "subject": "Nouvelle commande n° {number} ({total})",
+      "subjectAttention": "À vérifier : commande n° {number} ({total})",
+      "preview": "{name} a payé {total}.",
+      "intro": "Une commande vient d’être payée sur {site}.",
+      "attention": "Cette commande est à vérifier",
+      "buyer": "Acheteur",
+      "language": "Langue : {language}",
+      "openInAdmin": "Ouvrir la commande",
+      "openInAdminText": "La commande dans l’administration : {url}",
+      "replyHint": "Pour écrire à l’acheteur, répondez à cet e-mail."
+    },
+    "notes": {
+      "confirmationFailed": "L’e-mail de confirmation n’a pas pu être envoyé à {email} : prévenez l’acheteur vous-même.",
+      "noBuyerEmail": "La commande n’a pas d’adresse e-mail : aucune confirmation n’a été envoyée à l’acheteur.",
+      "notificationFailed": "La notification de cette commande n’a pas pu vous être envoyée par e-mail.",
+      "sendingFailed": "Les e-mails de cette commande n’ont pas pu être envoyés : prévenez l’acheteur vous-même."
+    }
   }
 }
