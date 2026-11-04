@@ -6,6 +6,7 @@ import type { Config } from 'payload'
 import type { LightConfig } from '@/config/schema'
 
 import { adminConfig } from './admin'
+import { MEDIA_MAX_BYTES, Media, mediaSharp } from './collections/Media'
 import { Users } from './collections/Users'
 import { database } from './db'
 import { localization } from './i18n/localization'
@@ -16,7 +17,7 @@ import { srcDir } from './paths'
 export function coreConfig(opts: { config: LightConfig }) {
   return {
     admin: adminConfig(opts),
-    collections: [Users],
+    collections: [Users, Media],
     db: database(),
     editor: lexicalEditor(),
     localization,
@@ -28,8 +29,9 @@ export function coreConfig(opts: { config: LightConfig }) {
       outputFile: path.resolve(srcDir, 'payload-types.ts'),
     },
     upload: {
-      // Image variants are configured on the transformer (S05).
-      transformers: [sharpTransformer()],
+      limits: { fileSize: MEDIA_MAX_BYTES },
+      // Image variants are configured per collection on the transformer.
+      transformers: [sharpTransformer({ collections: { media: mediaSharp } })],
     },
   } satisfies Config
 }
