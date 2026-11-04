@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+import { handleEndpoints } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { startPayload, type TestPayload } from '../support/payload'
@@ -48,10 +49,11 @@ describe('media collection', () => {
   it('does not upscale a small image', async () => {
     const doc = await upload(fixture('small-300x200.png'))
     expect(doc.width).toBe(300)
-    // Variants that would be larger than the original keep the original size.
-    expect(doc.variants?.card?.width ?? 300).toBe(300)
-    expect(doc.variants?.hero?.width ?? 300).toBe(300)
-    expect(doc.variants?.thumbnail?.width).toBe(300)
+    // Variants that would be larger than the source keep the source size: nothing is upscaled.
+    for (const name of ['thumbnail', 'card', 'hero', 'og'] as const) {
+      expect(doc.variants?.[name]?.width, name).toBe(300)
+      expect(doc.variants?.[name]?.height, name).toBe(200)
+    }
   })
 
   it('requires alt text, localized', async () => {
@@ -80,11 +82,11 @@ describe('media collection', () => {
     const data = Buffer.from('hello')
     await expect(
       upload({ data, mimetype: 'text/plain', name: 'note.txt', size: data.length }),
-    ).rejects.toThrow()
+    ).rejects.toMatchObject({ data: { errors: [{ message: expect.stringMatching(/not allowed/) }] } })
     const pdf = Buffer.from('%PDF-1.4')
     await expect(
       upload({ data: pdf, mimetype: 'application/pdf', name: 'a.pdf', size: pdf.length }),
-    ).rejects.toThrow()
+    ).rejects.toMatchObject({ data: { errors: [{ message: expect.stringMatching(/Invalid MIME type/) }] } })
   })
 
   it('rejects a file over 10 MB', async () => {
@@ -114,5 +116,67 @@ describe('media collection', () => {
     ).rejects.toThrow()
     const found = await app.payload.find({ collection: 'media', overrideAccess: false })
     expect(found.totalDocs).toBeGreaterThan(0)
+  })
+
+  describe('REST', () => {
+    const post = (body: FormData, headers: Record<string, string> = {}) =>
+      handleEndpoints({
+        config: app.payload.config,
+        path: '/api/media',
+        request: new Request('http://localhost/api/media', { method: 'POST', body, headers }),
+      })
+
+    const png = () => {
+      const f = fixture('small-300x200.png')
+      return new Blob([new Uint8Array(f.data)], { type: 'image/png' })
+    }
+
+    it('refuses an anonymous multipart upload', async () => {
+      const form = new FormData()
+      form.set('_payload', JSON.stringify({ alt: 'x' }))
+      form.set('file', png(), 'anon.png')
+      const res = await post(form)
+      expect([401, 403]).toContain(res.status)
+    })
+
+    it('answers 413 to a multipart body over 10 MB, before the user is looked at', async () => {
+      const boundary = 'lc-boundary'
+      const part = (head: string, body: Buffer) =>
+        Buffer.concat([Buffer.from(`--${boundary}\r\n${head}\r\n\r\n`), body, Buffer.from('\r\n')])
+      const body = Buffer.concat([
+        part('Content-Disposition: form-data; name="_payload"', Buffer.from('{"alt":"x"}')),
+        part(
+          'Content-Disposition: form-data; name="file"; filename="big.png"\r\nContent-Type: image/png',
+          Buffer.alloc(10 * 1024 * 1024 + 1024),
+        ),
+        Buffer.from(`--${boundary}--\r\n`),
+      ])
+      const res = await handleEndpoints({
+        config: app.payload.config,
+        path: '/api/media',
+        request: new Request('http://localhost/api/media', {
+          method: 'POST',
+          body,
+          headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+        }),
+      })
+      expect(res.status).toBe(413)
+    })
+
+    it('serves a stored SVG with the script-blocking Content-Security-Policy', async () => {
+      const data = Buffer.from(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20"/></svg>',
+      )
+      const doc = await upload({ data, mimetype: 'image/svg+xml', name: 'csp.svg', size: data.length })
+      const res = await handleEndpoints({
+        config: app.payload.config,
+        path: `/api/media/file/${doc.filename}`,
+        request: new Request(`http://localhost/api/media/file/${doc.filename}`),
+      })
+      expect(res.status).toBe(200)
+      expect(res.headers.get('Content-Type')).toContain('image/svg+xml')
+      expect(res.headers.get('Content-Security-Policy')).toContain("script-src 'none'")
+      await res.arrayBuffer()
+    })
   })
 })

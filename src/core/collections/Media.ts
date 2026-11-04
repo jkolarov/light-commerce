@@ -55,8 +55,6 @@ export const Media: CollectionConfig = {
     staticDir: mediaDir(),
     mimeTypes: MEDIA_MIME_TYPES,
     adminThumbnail: 'thumbnail',
-    // Keeps the admin from showing a size selector for formats we never resize.
-    focalPoint: false,
   },
 }
 
@@ -67,7 +65,7 @@ export const Media: CollectionConfig = {
 //  - card 800 w: product cards, image + text blocks (shown up to about 400 css px, 2x screens).
 //  - hero 1920 w: full-width hero banners.
 //  - og 1200x630 crop: social share image (Open Graph's 1.91:1 ratio).
-// WebP everywhere. `withoutEnlargement` is on, so a small image is never upscaled: the variant
+// WebP everywhere. `withoutEnlargement` is on for every size (og included), so a small image is never upscaled: the variant
 // is then missing or the original size and callers fall back to the original `url`.
 const webp = { format: 'webp', options: { quality: 80 } } as const
 
@@ -77,7 +75,15 @@ export const mediaSharp = {
     { name: 'thumbnail', width: 400, withoutEnlargement: true, formatOptions: webp },
     { name: 'card', width: 800, withoutEnlargement: true, formatOptions: webp },
     { name: 'hero', width: 1920, withoutEnlargement: true, formatOptions: webp },
-    { name: 'og', width: 1200, height: 630, fit: 'cover', position: 'centre', formatOptions: webp },
+    {
+      name: 'og',
+      width: 1200,
+      height: 630,
+      fit: 'cover',
+      position: 'centre',
+      withoutEnlargement: true,
+      formatOptions: webp,
+    },
   ],
 } satisfies NonNullable<
   NonNullable<Parameters<typeof import('@payloadcms/transformer-sharp').sharpTransformer>[0]>['collections']
