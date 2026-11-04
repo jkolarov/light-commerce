@@ -4,6 +4,7 @@ import { fieldAffectsData } from 'payload/shared'
 
 import { isStaffOrOwner } from '@/core/access'
 
+import { checkCartItems } from '../cart/checkItems'
 import { hiddenFromAdmin } from './admin'
 
 // Carts: the plugin's own collection, for guests (reached with the cart's `secret`).
@@ -24,5 +25,11 @@ export const cartsOverride: CollectionOverride = async (args) => {
         ? ({ ...field, access: { ...field.access, create: isStaffOrOwner, update: isStaffOrOwner } } as Field)
         : field,
     ),
+    hooks: {
+      ...carts.hooks,
+      // Published products with a price, never more than the stock (cart/checkItems.ts). First,
+      // so the plugin's pricing only sees lines that passed.
+      beforeChange: [checkCartItems, ...(carts.hooks?.beforeChange ?? [])],
+    },
   }
 }
