@@ -16,7 +16,10 @@ export function optionalLinkField(name = 'link'): Field {
   if (field.type !== 'group') return field
   return {
     ...field,
-    admin: { ...field.admin, description: 'Optional. Leave the label and the page empty for no button.' },
+    admin: { ...field.admin, description: {
+        en: 'Optional. Leave the label and the page empty for no button.',
+        fr: 'Facultatif. Laissez le libellé et la page vides pour ne pas afficher de bouton.',
+      } },
     fields: field.fields.map((sub) => {
       if (!('validate' in sub) || typeof sub.validate !== 'function') return sub
       const validate = sub.validate as (value: unknown, options: { siblingData?: unknown }) => unknown

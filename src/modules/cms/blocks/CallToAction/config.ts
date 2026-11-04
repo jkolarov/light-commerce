@@ -7,14 +7,15 @@ import { requiredInDefaultLocale } from '../../fields/requiredInDefaultLocale'
 export const callToActionBlock: Block = {
   slug: 'callToAction',
   interfaceName: 'CallToActionBlock',
-  labels: { singular: 'Call to action', plural: 'Calls to action' },
+  labels: { singular: { en: 'Call to action', fr: 'Appel à l’action' }, plural: { en: 'Calls to action', fr: 'Appels à l’action' } },
   fields: [
-    { name: 'heading', type: 'text', localized: true, validate: requiredInDefaultLocale },
+    { name: 'heading', type: 'text', label: { en: 'Heading', fr: 'Titre' }, localized: true, validate: requiredInDefaultLocale },
     {
       name: 'text',
       type: 'textarea',
+      label: { en: 'Text', fr: 'Texte' },
       localized: true,
-      admin: { description: 'Optional. One sentence.' },
+      admin: { description: { en: 'Optional. One sentence.', fr: 'Facultatif. Une phrase.' } },
     },
     linkField('link'),
   ],

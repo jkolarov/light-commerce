@@ -10,6 +10,10 @@ import { slugify } from '../fields/slugify'
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
+  labels: {
+    singular: { en: 'Page', fr: 'Page' },
+    plural: { en: 'Pages', fr: 'Pages' },
+  },
   access: {
     read: publishedOrStaff,
     create: isStaffOrOwner,
@@ -24,14 +28,21 @@ export const Pages: CollectionConfig = {
   },
   versions: { drafts: true },
   fields: [
-    { name: 'title', type: 'text', localized: true, validate: requiredInDefaultLocale },
+    { name: 'title', type: 'text', label: { en: 'Title', fr: 'Titre' }, localized: true, validate: requiredInDefaultLocale },
     {
       name: 'slug',
       type: 'text',
+      label: { en: 'Slug', fr: 'Adresse' },
       localized: true,
       unique: true,
       index: true,
-      admin: { position: 'sidebar', description: 'The address of the page. Made from the title when left empty.' },
+      admin: {
+        position: 'sidebar',
+        description: {
+          en: 'The address of the page. Made from the title when left empty.',
+          fr: 'L’adresse de la page. Créée à partir du titre si elle reste vide.',
+        },
+      },
       hooks: {
         beforeValidate: [
           ({ value, siblingData }) => {
@@ -67,6 +78,6 @@ export const Pages: CollectionConfig = {
       }) satisfies TextFieldSingleValidation,
     },
     // `meta.title`, `meta.description` and `meta.image` are added by the SEO plugin (see index.ts).
-    { name: 'layout', type: 'blocks', blocks: cmsBlocks },
+    { name: 'layout', type: 'blocks', label: { en: 'Content', fr: 'Contenu' }, labels: { singular: { en: 'Block', fr: 'Bloc' }, plural: { en: 'Blocks', fr: 'Blocs' } }, blocks: cmsBlocks },
   ],
 }

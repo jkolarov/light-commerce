@@ -41,20 +41,23 @@ export function linkField(name = 'link'): Field {
   return {
     name,
     type: 'group',
-    fields: [
+    label: { en: 'Link', fr: 'Lien' },
+    fields: [ 
       {
         name: 'type',
         type: 'radio',
+        label: { en: 'Type', fr: 'Type' },
         defaultValue: 'page',
         options: [
-          { label: 'Page', value: 'page' },
-          { label: 'URL', value: 'url' },
+          { label: { en: 'Page', fr: 'Page' }, value: 'page' },
+          { label: { en: 'URL', fr: 'Adresse (URL)' }, value: 'url' },
         ],
       },
-      { name: 'label', type: 'text', localized: true, validate: requiredInDefaultLocale },
+      { name: 'label', type: 'text', label: { en: 'Label', fr: 'Libellé' }, localized: true, validate: requiredInDefaultLocale },
       {
         name: 'page',
         type: 'relationship',
+        label: { en: 'Page', fr: 'Page' },
         relationTo: 'pages',
         admin: { condition: (_, siblingData) => siblingData?.type !== 'url' },
         validate: (value: unknown, { siblingData }: { siblingData: { type?: string } }) =>
@@ -63,10 +66,14 @@ export function linkField(name = 'link'): Field {
       {
         name: 'url',
         type: 'text',
+        label: { en: 'URL', fr: 'Adresse (URL)' },
         localized: true,
         admin: {
           condition: (_, siblingData) => siblingData?.type === 'url',
-          description: 'A path on this site (for example /fr/shop/tisane) or a full https:// address.',
+          description: {
+            en: 'A path on this site (for example /fr/shop/tisane) or a full https:// address.',
+            fr: 'Un chemin de ce site (par exemple /fr/shop/tisane) ou une adresse complète en https://.',
+          },
         },
         validate: ((value, options) => {
           if ((options.siblingData as { type?: string } | undefined)?.type !== 'url') return true

@@ -100,8 +100,9 @@ function orderFields(currenciesConfig: CurrenciesConfig, defaults: Field[]): Fie
       breakdownRow(currenciesConfig, readOnly),
       linePricesField({
         access: { update: nobody },
-        label: { en: 'Lines as charged (cents)', fr: 'Lignes facturées (centimes)' },
-        admin: { readOnly: true, position: 'sidebar' },
+        label: { en: 'Order lines', fr: 'Lignes de la commande' },
+        // A table of what each line was charged (../admin/LinePrices.tsx), in the main column.
+        admin: { readOnly: true, components: { Field: '/modules/shop/admin/LinePrices#LinePrices' } },
       } as Partial<Field>),
     ),
     ...attention,
