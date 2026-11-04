@@ -85,13 +85,16 @@ export const withFlatShipping = (adapter: PaymentAdapter, shippingCents: number)
       ...args,
       data: { ...args.data, cart: { ...args.data.cart, subtotal: subtotal + shippingCents } },
     })
-    await args.req.payload.update({
+    const updated = await args.req.payload.update({
       collection: 'transactions',
       overrideAccess: true,
       req: args.req,
       where: { 'stripe.paymentIntentID': { equals: result.paymentIntentID } },
       data: { subtotal, shippingAmount: shippingCents } as never,
     })
+    if (updated.docs.length !== 1) {
+      throw new Error(`Expected one transaction for ${String(result.paymentIntentID)}, updated ${updated.docs.length}`)
+    }
     return result
   },
   confirmOrder: (args) =>
@@ -124,6 +127,11 @@ export const spikeStripeAdapter = (): PaymentAdapter => {
     publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
     webhookSecret: process.env.STRIPE_WEBHOOKS_SIGNING_SECRET!,
     webhooks: webhookOrders ? { 'payment_intent.succeeded': settleFromWebhook } : {},
+    // One transaction per PaymentIntent, enforced by the database.
+    groupOverrides: {
+      fields: ({ defaultFields }) =>
+        defaultFields.map((f) => ('name' in f && f.name === 'paymentIntentID' ? { ...f, unique: true } : f)),
+    },
   })
   return withFlatShipping(adapter, Number(process.env.SPIKE_SHIPPING_CENTS || 0))
 }
