@@ -1,8 +1,8 @@
 import type { Locale } from '@/core/i18n/locales'
 import type { ImageTextBlock } from '@/payload-types'
+import { MediaImage } from '@/theme'
+import { asMedia } from '@/theme/media'
 
-import { asMedia } from '../shared/media'
-import { MediaImage } from '../shared/MediaImage'
 import { RichTextContent } from '../shared/RichTextContent'
 import { blockSpacing, container, photoFrame, sectionHeading } from '../shared/styles'
 

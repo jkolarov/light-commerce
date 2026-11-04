@@ -1,7 +1,7 @@
 import type { Media } from '@/payload-types'
 
-// Photos from the media collection, for any part of the public site (shop pages; the CMS blocks
-// have their own copy in src/modules/cms/blocks/shared/, from before this one).
+// Photos from the media collection, for any part of the public site: the CMS blocks and the shop's
+// pages both draw them through these helpers and `MediaImage`.
 
 export type ImageSource = { url: string; width: number; height: number }
 

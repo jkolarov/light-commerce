@@ -1,9 +1,9 @@
 import type { Locale } from '@/core/i18n/locales'
 import type { HeroBlock } from '@/payload-types'
+import { MediaImage } from '@/theme'
+import { asMedia } from '@/theme/media'
 
 import { LinkButton, linkTarget } from '../shared/LinkButton'
-import { asMedia } from '../shared/media'
-import { MediaImage } from '../shared/MediaImage'
 import { container, displayHeading, photoFrame } from '../shared/styles'
 
 type Props = HeroBlock & { locale: Locale }
