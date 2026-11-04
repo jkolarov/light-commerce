@@ -46,6 +46,19 @@ describe('setup: CMS only', () => {
     expect(pluginCalls).toEqual({ cms: [[{ config }]], shop: [] })
   })
 
+  it('has nothing from the shop: no collections, endpoints or admin strings', () => {
+    const slugs = payload.config.collections.map((c) => c.slug)
+    for (const slug of ['products', 'carts', 'orders', 'transactions', 'addresses', 'variants']) {
+      expect(slugs).not.toContain(slug)
+    }
+    const endpoints = payload.config.endpoints.map((e) => e.path)
+    expect(endpoints.filter((p) => p.startsWith('/payments'))).toEqual([])
+    const translations = payload.config.i18n.translations as Record<string, Record<string, unknown>>
+    for (const language of Object.keys(translations)) {
+      expect(translations[language]).not.toHaveProperty('plugin-ecommerce')
+    }
+  })
+
   it('never writes its types over the committed src/payload-types.ts', () => {
     // The committed file describes both modules; this setup's types go to a scratch file.
     expect(payload.config.typescript.outputFile).not.toBe(path.resolve('src/payload-types.ts'))

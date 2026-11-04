@@ -1,0 +1,430 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+
+import { handleEndpoints, type Payload } from 'payload'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+
+import type { Product, User } from '@/payload-types'
+
+import { describeWithShop } from '../support/modules'
+import { startPayload, type TestPayload } from '../support/payload'
+
+describeWithShop('products', () => {
+  let test: TestPayload
+  let payload: Payload
+  let mediaDir: string
+  let staff: User
+  let photoId: number
+
+  const asStaff = () => ({ ...staff, collection: 'users' as const })
+
+  /** A product published in every language, with French text only unless more is given. */
+  const publish = async (data: Partial<Product>) => {
+    const created = await payload.create({
+      collection: 'products',
+      data: { inventory: 10, priceInEUR: 790, _status: 'published', ...data } as Product,
+      locale: 'fr',
+      overrideAccess: true,
+    })
+    return payload.update({
+      collection: 'products',
+      id: created.id,
+      data: { _status: 'published' },
+      publishAllLocales: true,
+      locale: 'fr',
+      overrideAccess: true,
+    })
+  }
+
+  const rest = (url: string) =>
+    handleEndpoints({
+      config: payload.config,
+      path: new URL(url, 'http://localhost').pathname,
+      request: new Request(new URL(url, 'http://localhost')),
+    })
+
+  beforeAll(async () => {
+    mediaDir = mkdtempSync(path.join(tmpdir(), 'lc-media-'))
+    test = await startPayload({ MEDIA_DIR: mediaDir })
+    payload = test.payload
+    staff = await payload.create({
+      collection: 'users',
+      data: { email: 'staff@example.com', password: 'pw-staff-1', roles: ['staff'] },
+      overrideAccess: true,
+    })
+    const data = readFileSync(path.join(import.meta.dirname, '..', 'fixtures', 'small-300x200.png'))
+    const photo = await payload.create({
+      collection: 'media',
+      data: { alt: 'Une photo' },
+      file: { data, mimetype: 'image/png', name: 'product.png', size: data.length },
+      overrideAccess: true,
+    })
+    photoId = photo.id
+  }, 60_000)
+
+  afterAll(async () => {
+    await test?.stop()
+    rmSync(mediaDir, { recursive: true, force: true })
+  })
+
+  it('stores name, summary and description per language, with one slug for both', async () => {
+    const product = await publish({ title: 'Verveine odorante', summary: 'Citronnée et vive' })
+    await payload.update({
+      collection: 'products',
+      id: product.id,
+      data: { title: 'Lemon verbena', summary: 'Bright and lemony', _status: 'published' },
+      locale: 'en',
+      overrideAccess: true,
+    })
+    const fr = await payload.findByID({ collection: 'products', id: product.id, locale: 'fr' })
+    const en = await payload.findByID({ collection: 'products', id: product.id, locale: 'en' })
+    expect([fr.title, en.title]).toEqual(['Verveine odorante', 'Lemon verbena'])
+    expect([fr.summary, en.summary]).toEqual(['Citronnée et vive', 'Bright and lemony'])
+    expect(fr.slug).toBe('verveine-odorante')
+    expect(en.slug).toBe('verveine-odorante')
+  })
+
+  it('shows the French text when the English one is missing', async () => {
+    const product = await publish({ title: 'Tilleul', summary: 'Doux et floral' })
+    const en = await payload.findByID({ collection: 'products', id: product.id, locale: 'en', overrideAccess: false })
+    expect(en.title).toBe('Tilleul')
+    expect(en.summary).toBe('Doux et floral')
+  })
+
+  it('makes the slug from the French name, in plain ASCII', async () => {
+    expect((await publish({ title: 'La Veillée' })).slug).toBe('la-veillee')
+    expect((await publish({ title: 'Thé d’été !' })).slug).toBe('the-d-ete')
+  })
+
+  it('publishes in every language at once, from a create or a one-language Publish', async () => {
+    const created = await payload.create({
+      collection: 'products', data: { title: 'Publié à la création', slug: 'publie-a-la-creation', _status: 'published' }, locale: 'fr', overrideAccess: false, user: asStaff(),
+    })
+    const draft = await payload.create({
+      collection: 'products', data: { title: 'Publié ensuite', slug: 'publie-ensuite', _status: 'draft' }, draft: true, locale: 'fr', overrideAccess: false, user: asStaff(),
+    })
+    await payload.update({ collection: 'products', id: draft.id, data: { _status: 'published' }, locale: 'fr', overrideAccess: false, user: asStaff() })
+    for (const id of [created.id, draft.id]) {
+      const en = await payload.find({ collection: 'products', where: { id: { equals: id } }, locale: 'en', overrideAccess: false })
+      expect(en.docs.map((doc) => doc.title), String(id)).toHaveLength(1)
+    }
+  })
+
+  it('refuses a slug that another product already has', async () => {
+    await publish({ title: 'Menthe poivrée' })
+    await expect(publish({ title: 'Autre menthe', slug: 'menthe-poivree' })).rejects.toMatchObject({
+      data: { errors: [{ path: 'slug', message: expect.stringMatching(/unique/i) }] },
+    })
+  })
+
+  it('takes a price in whole cents, 0 or more', async () => {
+    const product = await publish({ title: 'Prix entier', priceInEUR: 1250 })
+    expect(product.priceInEUR).toBe(1250)
+    expect(product.priceInEUREnabled).toBe(true)
+    for (const priceInEUR of [12.5, -1]) {
+      await expect(publish({ title: `Prix ${priceInEUR}`, priceInEUR }), String(priceInEUR)).rejects.toMatchObject({
+        data: { errors: [{ message: expect.stringMatching(/whole number of cents/) }] },
+      })
+    }
+  })
+
+  it('keeps stock as a whole number, 0 or more', async () => {
+    const product = await publish({ title: 'Stock', inventory: 48 })
+    expect(product.inventory).toBe(48)
+    for (const inventory of [2.5, -1]) {
+      await expect(publish({ title: `Stock ${inventory}`, inventory }), String(inventory)).rejects.toMatchObject({
+        data: { errors: [{ message: expect.stringMatching(/whole number of units/) }] },
+      })
+    }
+  })
+
+  describe('stock', () => {
+    // A sale: the plugin takes stock with a raw `$inc` on the live document, never on its versions.
+    const sell = (id: number, quantity: number) =>
+      payload.db.updateOne({ collection: 'products', id, data: { inventory: { $inc: -quantity } } as never })
+    const live = async (id: number) =>
+      ((await payload.db.findOne({ collection: 'products', where: { id: { equals: id } } })) as Product).inventory
+    /** What the admin's edit view loads: a staff draft read. */
+    const editView = (id: number) =>
+      payload.findByID({ collection: 'products', id, draft: true, locale: 'fr', overrideAccess: false, user: asStaff() })
+    /** What the admin's Save draft and Publish buttons send: the whole form. */
+    const save = (id: number, data: Partial<Product>, draft = false) =>
+      payload.update({ collection: 'products', id, data, draft, locale: 'fr', overrideAccess: false, user: asStaff() })
+
+    it('shows the live stock in the admin, never the stock of a saved version', async () => {
+      const { id } = await publish({ title: 'Stock lu', inventory: 20 })
+      await save(id, { title: 'Stock lu (brouillon)', _status: 'draft' }, true)
+      await sell(id, 3)
+      expect((await editView(id)).inventory).toBe(17)
+      const list = await payload.find({ collection: 'products', where: { id: { equals: id } }, draft: true, overrideAccess: false, user: asStaff() })
+      expect(list.docs[0]!.inventory).toBe(17)
+    })
+
+    it('applies a stock change at once on a draft save', async () => {
+      const { id } = await publish({ title: 'Stock brouillon', inventory: 20 })
+      await save(id, { ...(await editView(id)), inventory: 35, title: 'Pas encore publié', _status: 'draft' }, true)
+      expect(await live(id)).toBe(35)
+      // The text stays a draft: visitors still see the published name, with the new stock.
+      const forVisitors = await payload.findByID({ collection: 'products', id, locale: 'fr', overrideAccess: false })
+      expect([forVisitors.title, forVisitors.inventory]).toEqual(['Stock brouillon', 35])
+    })
+
+    it('never writes back stock it did not change: a sale between opening and saving is kept', async () => {
+      const { id } = await publish({ title: 'Stock concurrent', inventory: 20 })
+      for (const draft of [true, false]) {
+        const loaded = await editView(id)
+        await sell(id, 2)
+        await save(id, { ...loaded, title: `Nom ${draft ? 'brouillon' : 'publié'}`, _status: draft ? 'draft' : 'published' }, draft)
+        expect(await live(id), draft ? 'draft save' : 'publish').toBe(loaded.inventory! - 2)
+      }
+      expect(await live(id)).toBe(16)
+    })
+
+    it("lets staff's explicit number win over a sale made while they edited", async () => {
+      const { id } = await publish({ title: 'Stock imposé', inventory: 20 })
+      const loaded = await editView(id)
+      await sell(id, 2)
+      await save(id, { ...loaded, inventory: 50, _status: 'published' })
+      expect(await live(id)).toBe(50)
+    })
+
+    it('writes stock that server code sends, keeps it when server code does not send it', async () => {
+      const { id } = await publish({ title: 'Stock script', inventory: 20 })
+      await sell(id, 1)
+      await payload.update({ collection: 'products', id, data: { title: 'Par script', _status: 'published' }, locale: 'fr', overrideAccess: true })
+      expect(await live(id)).toBe(19)
+      await payload.update({ collection: 'products', id, data: { inventory: 40 }, draft: true, locale: 'fr', overrideAccess: true })
+      expect(await live(id)).toBe(40)
+    })
+
+    it('does not touch stock when an old version is restored', async () => {
+      const { id } = await publish({ title: 'Stock restauré', inventory: 20 })
+      await save(id, { ...(await editView(id)), title: 'Nouveau nom', _status: 'published' })
+      await sell(id, 4)
+      const { docs: versions } = await payload.findVersions({
+        collection: 'products', where: { parent: { equals: id } }, sort: 'createdAt', limit: 1, overrideAccess: true,
+      })
+      await payload.restoreVersion({ collection: 'products', id: versions[0]!.id, overrideAccess: false, user: asStaff() })
+      expect((await payload.findByID({ collection: 'products', id, locale: 'fr', overrideAccess: true })).title).toBe('Stock restauré')
+      expect(await live(id)).toBe(16)
+    })
+
+    /**
+     * Runs `action` with a sale of `quantity` injected right before Payload writes the product's
+     * live row (the latest moment a concurrent sale can land). Returns the product writes seen.
+     */
+    const withSaleBeforeWrite = async (id: number, quantity: number, action: () => Promise<unknown>) => {
+      const db = payload.db as unknown as { updateOne: (args: Record<string, unknown>) => Promise<unknown> }
+      const updateOne = db.updateOne.bind(db)
+      const writes: string[][] = []
+      let sold = false
+      db.updateOne = async (args) => {
+        const data = (args.data ?? {}) as Record<string, unknown>
+        const isSale = typeof data.inventory === 'object' && data.inventory !== null
+        if (args.collection === 'products' && !isSale) {
+          writes.push(Object.keys(data))
+          if (!sold) {
+            sold = true
+            await updateOne({ collection: 'products', id, data: { inventory: { $inc: -quantity } } })
+          }
+        }
+        return updateOne(args)
+      }
+      try {
+        await action()
+      } finally {
+        db.updateOne = updateOne
+      }
+      expect(sold, 'the sale was injected').toBe(true)
+      return writes
+    }
+
+    it("keeps a sale that lands just before the admin's Publish writes the product", async () => {
+      const { id } = await publish({ title: 'Stock pendant la publication', inventory: 20 })
+      const loaded = await editView(id)
+      const writes = await withSaleBeforeWrite(id, 3, () => save(id, { ...loaded, title: 'Renommé', _status: 'published' }))
+      expect(await live(id)).toBe(17)
+      expect(writes.filter((keys) => keys.includes('inventory'))).toEqual([])
+    })
+
+    it('keeps a sale that lands just before server code saves a published product', async () => {
+      const { id } = await publish({ title: 'Stock pendant un script', inventory: 20 })
+      const writes = await withSaleBeforeWrite(id, 2, () =>
+        payload.update({ collection: 'products', id, data: { title: 'Script' }, locale: 'fr', overrideAccess: true }),
+      )
+      expect(await live(id)).toBe(18)
+      expect(writes.filter((keys) => keys.includes('inventory'))).toEqual([])
+    })
+
+    it('refuses bad stock or a bad price on a draft create, and stores nothing', async () => {
+      const before = await payload.count({ collection: 'products', overrideAccess: true })
+      for (const data of [{ inventory: -5 }, { inventory: 2.5 }, { priceInEUR: 12.5 }, { priceInEUR: -1 }]) {
+        await expect(
+          payload.create({ collection: 'products', data: { title: 'Brouillon invalide', ...data } as Product, draft: true, locale: 'fr', overrideAccess: false, user: asStaff() }),
+          JSON.stringify(data),
+        ).rejects.toMatchObject({ data: { errors: [{ path: Object.keys(data)[0] }] } })
+      }
+      expect(await payload.count({ collection: 'products', overrideAccess: true })).toEqual(before)
+    })
+
+    it('refuses a bad price on a draft update', async () => {
+      const { id } = await publish({ title: 'Prix brouillon', priceInEUR: 790 })
+      await expect(save(id, { ...(await editView(id)), priceInEUR: 12.5, _status: 'draft' }, true)).rejects.toMatchObject({
+        data: { errors: [{ path: 'priceInEUR', message: expect.stringMatching(/whole number of cents/) }] },
+      })
+    })
+
+    it('refuses a stock that is not a whole number, on a draft save too, and leaves the stock alone', async () => {
+      const { id } = await publish({ title: 'Stock invalide', inventory: 20 })
+      for (const draft of [true, false]) {
+        await expect(save(id, { ...(await editView(id)), inventory: 2.5, _status: draft ? 'draft' : 'published' }, draft)).rejects.toMatchObject({
+          data: { errors: [{ path: 'inventory', message: expect.stringMatching(/whole number of units/) }] },
+        })
+      }
+      expect(await live(id)).toBe(20)
+    })
+
+    it('changes no stock when the rest of the save fails', async () => {
+      const { id } = await publish({ title: 'Stock et prix', inventory: 20 })
+      await expect(save(id, { ...(await editView(id)), inventory: 30, priceInEUR: 12.5, _status: 'published' })).rejects.toThrow()
+      expect(await live(id)).toBe(20)
+    })
+
+    it('keeps the loaded stock away from visitors and out of the database', async () => {
+      const { id } = await publish({ title: 'Stock privé', inventory: 20 })
+      expect((await editView(id)).loadedInventory).toBe(20)
+      const forVisitors = await payload.findByID({ collection: 'products', id, locale: 'fr', overrideAccess: false })
+      expect(forVisitors).not.toHaveProperty('loadedInventory')
+      const row = (await payload.db.findOne({ collection: 'products', where: { id: { equals: id } } })) as Record<string, unknown>
+      expect(row).not.toHaveProperty('loadedInventory')
+    })
+  })
+
+  it('takes its photos from media', async () => {
+    const product = await publish({ title: 'Mauve', images: [photoId] })
+    const read = await payload.findByID({ collection: 'products', id: product.id, overrideAccess: false })
+    expect(read.images?.map((image) => (typeof image === 'object' ? image.alt : image))).toEqual(['Une photo'])
+  })
+
+  it('keeps facts in display order, each one translated, French filling the gaps', async () => {
+    const product = await publish({
+      title: 'La Veillée',
+      facts: [
+        { label: 'Plante', value: 'Tilleul et mauve' },
+        { label: 'Poids net', value: '30 g' },
+      ],
+    })
+    const [plant, weight] = product.facts!
+    // The rows are shared by both languages: translate each one by its id.
+    await payload.update({
+      collection: 'products',
+      id: product.id,
+      data: { facts: [{ id: plant!.id, label: 'Plant', value: 'Linden and mallow' }, { id: weight!.id, label: 'Net weight' }] },
+      locale: 'en',
+      overrideAccess: true,
+    })
+    const en = await payload.findByID({ collection: 'products', id: product.id, locale: 'en' })
+    expect(en.facts?.map(({ label, value }) => [label, value])).toEqual([
+      ['Plant', 'Linden and mallow'],
+      ['Net weight', '30 g'],
+    ])
+    const fr = await payload.findByID({ collection: 'products', id: product.id, locale: 'fr' })
+    expect(fr.facts?.map(({ label, value }) => [label, value])).toEqual([
+      ['Plante', 'Tilleul et mauve'],
+      ['Poids net', '30 g'],
+    ])
+  })
+
+  it('lets staff create products, and nobody else', async () => {
+    await expect(
+      payload.create({ collection: 'products', data: { title: 'Anonyme', slug: 'anonyme' }, overrideAccess: false }),
+    ).rejects.toThrow()
+    const created = await payload.create({
+      collection: 'products',
+      data: { title: 'Par le staff', _status: 'draft' },
+      overrideAccess: false,
+      user: asStaff(),
+      draft: true,
+    })
+    expect(created.slug).toBe('par-le-staff')
+  })
+
+  it('hides an unpublished product from anonymous visitors, shows it to staff', async () => {
+    const draft = await payload.create({
+      collection: 'products',
+      data: { title: 'Pas encore', _status: 'draft' },
+      locale: 'fr',
+      draft: true,
+      overrideAccess: true,
+    })
+    const anonymous = await payload.find({ collection: 'products', where: { id: { equals: draft.id } }, draft: true, overrideAccess: false })
+    expect(anonymous.docs).toHaveLength(0)
+    const forStaff = await payload.find({
+      collection: 'products', where: { id: { equals: draft.id } }, draft: true, overrideAccess: false, user: asStaff(),
+    })
+    expect(forStaff.docs).toHaveLength(1)
+  })
+
+  it('keeps draft text and versions from anonymous callers, through the Local API', async () => {
+    const product = await publish({ title: 'Public name', summary: 'Public summary' })
+    await payload.update({
+      collection: 'products',
+      id: product.id,
+      data: { title: 'DRAFT NAME', summary: 'DRAFT SUMMARY', _status: 'draft' },
+      draft: true,
+      locale: 'fr',
+      overrideAccess: true,
+    })
+    for (const locale of ['fr', 'en', 'all'] as const) {
+      const found = await payload.find({ collection: 'products', where: { id: { equals: product.id } }, draft: true, locale, overrideAccess: false })
+      expect(found.docs, locale).toHaveLength(1)
+      expect(JSON.stringify(found.docs), locale).not.toContain('DRAFT')
+      const byId = await payload.findByID({ collection: 'products', id: product.id, draft: true, locale, overrideAccess: false })
+      expect(JSON.stringify(byId), locale).not.toContain('DRAFT')
+    }
+    await expect(payload.findVersions({ collection: 'products', overrideAccess: false })).rejects.toThrow()
+
+    const forStaff = await payload.findByID({
+      collection: 'products', id: product.id, draft: true, locale: 'fr', overrideAccess: false, user: asStaff(),
+    })
+    expect(forStaff.title).toBe('DRAFT NAME')
+    const versions = await payload.findVersions({ collection: 'products', overrideAccess: false, user: asStaff() })
+    expect(versions.totalDocs).toBeGreaterThan(0)
+  })
+
+  it('keeps draft text, versions and deleted products from anonymous callers, through REST', async () => {
+    const product = await publish({ title: 'REST public' })
+    await payload.update({
+      collection: 'products',
+      id: product.id,
+      data: { title: 'REST DRAFT', _status: 'draft' },
+      draft: true,
+      locale: 'fr',
+      overrideAccess: true,
+    })
+    for (const locale of ['fr', 'en', 'all']) {
+      const list = await rest(`/api/products?draft=true&locale=${locale}&limit=100`)
+      expect(list.status).toBe(200)
+      const listBody = await list.text()
+      expect(listBody, locale).toContain('REST public')
+      expect(listBody, locale).not.toContain('REST DRAFT')
+      const one = await rest(`/api/products/${product.id}?draft=true&locale=${locale}`)
+      expect(one.status).toBe(200)
+      expect(await one.text(), locale).not.toContain('REST DRAFT')
+    }
+    const versions = await rest('/api/products/versions')
+    expect([401, 403]).toContain(versions.status)
+    expect(await versions.text()).not.toContain('REST DRAFT')
+
+    // Deleted products go to the trash, where only staff see them.
+    const deleted = await publish({ title: 'Retiré de la vente' })
+    await payload.update({ collection: 'products', id: deleted.id, data: { deletedAt: new Date().toISOString() }, overrideAccess: true })
+    const trash = await rest(`/api/products?trash=true&where[id][equals]=${deleted.id}`)
+    expect(await trash.json()).toMatchObject({ totalDocs: 0 })
+    const forStaff = await payload.find({
+      collection: 'products', where: { id: { equals: deleted.id } }, trash: true, overrideAccess: false, user: asStaff(),
+    })
+    expect(forStaff.totalDocs).toBe(1)
+  })
+})
