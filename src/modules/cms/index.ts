@@ -4,6 +4,8 @@ import type { Plugin } from 'payload'
 import type { LightConfig } from '@/config/schema'
 
 import { Pages } from './collections/Pages'
+import { Footer } from './globals/Footer'
+import { Header } from './globals/Header'
 
 // The CMS module: pages with blocks, header and footer menus, SEO, sitemap.
 // It registers its own collections, globals, hooks and endpoints on the config it receives,
@@ -14,6 +16,7 @@ export const cmsPlugin =
     const withPages = {
       ...incomingConfig,
       collections: [...(incomingConfig.collections ?? []), Pages],
+      globals: [...(incomingConfig.globals ?? []), Header, Footer],
     }
     // SEO fields (`meta.title`, `meta.description`, `meta.image`) on the pages, images from `media`.
     return seoPlugin({ collections: ['pages'], uploadsCollection: 'media' })(withPages)
