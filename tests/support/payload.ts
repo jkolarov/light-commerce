@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import type { Payload } from 'payload'
+import type { CollectionConfig, Payload } from 'payload'
 
 export type TestPayload = {
   payload: Payload
@@ -18,9 +18,14 @@ export type TestPayload = {
  *   its environment when it is first imported, and Payload caches its instance, so a second boot
  *   in the same file would reuse the first one.
  * - Don't import `@/payload.config` statically in a file that uses this helper, for the same reason.
+ * - `opts.extraCollections` adds test-only collections (for example to exercise an access helper on
+ *   drafts). They are added next to the app's own, which stay untouched.
  * - `env` sets extra variables before the config is imported (for example a module setup).
  */
-export async function startPayload(env: Record<string, string> = {}): Promise<TestPayload> {
+export async function startPayload(
+  env: Record<string, string> = {},
+  opts: { extraCollections?: CollectionConfig[] } = {},
+): Promise<TestPayload> {
   const dir = mkdtempSync(path.join(tmpdir(), 'lc-test-'))
   const vars: Record<string, string> = {
     DATABASE_URI: `file:${path.join(dir, 'test.db')}`,
@@ -40,7 +45,9 @@ export async function startPayload(env: Record<string, string> = {}): Promise<Te
 
   try {
     const { getPayload } = await import('payload')
-    const { default: config } = await import('@/payload.config')
+    const config = opts.extraCollections?.length
+      ? await composeWithExtras(opts.extraCollections)
+      : (await import('@/payload.config')).default
     const payload = await getPayload({ config })
     return {
       payload,
@@ -53,4 +60,23 @@ export async function startPayload(env: Record<string, string> = {}): Promise<Te
     cleanUp()
     throw error
   }
+}
+
+// Same composition as `src/payload.config.ts`, plus the extra collections.
+async function composeWithExtras(extra: CollectionConfig[]) {
+  const { buildConfig } = await import('payload')
+  const { getLightConfig } = await import('@/config')
+  const { coreConfig } = await import('@/core')
+  const { cmsPlugin } = await import('@/modules/cms')
+  const { shopPlugin } = await import('@/modules/shop')
+  const config = getLightConfig()
+  const core = coreConfig({ config })
+  return buildConfig({
+    ...core,
+    collections: [...core.collections, ...extra],
+    plugins: [
+      ...(config.modules.cms ? [cmsPlugin({ config })] : []),
+      ...(config.modules.shop ? [shopPlugin({ config })] : []),
+    ],
+  })
 }

@@ -1,4 +1,12 @@
-import type { Access, CollectionBeforeValidateHook, CollectionConfig } from 'payload'
+import { APIError } from 'payload'
+import type {
+  Access,
+  CollectionBeforeChangeHook,
+  CollectionBeforeDeleteHook,
+  CollectionBeforeValidateHook,
+  CollectionConfig,
+  PayloadRequest,
+} from 'payload'
 
 import { isOwner, isStaffOrOwner } from '../access'
 
@@ -11,11 +19,42 @@ async function noUsersYet(req: Parameters<Access>[0]['req']): Promise<boolean> {
 
 // The first user is always an owner, whatever the request says. Later users default to staff.
 const firstUserIsOwner: CollectionBeforeValidateHook = async ({ data, operation, req }) => {
-  if (operation !== 'create') return data
-  if (await noUsersYet(req)) return { ...data, roles: ['owner'] }
-  // Not `required` in the schema, so callers can omit roles without a type error; never store none.
-  if (!data?.roles?.length) return { ...data, roles: ['staff'] }
+  if (operation === 'create') {
+    if (await noUsersYet(req)) return { ...data, roles: ['owner'] }
+    // Not `required` in the schema, so callers can omit roles without a type error; never store none.
+    if (!data?.roles?.length) return { ...data, roles: ['staff'] }
+    return data
+  }
+  // On update, an explicit empty or null roles falls back to staff. Omitted roles stay as they are.
+  if (operation === 'update' && data && 'roles' in data && !data.roles?.length) {
+    return { ...data, roles: ['staff'] }
+  }
   return data
+}
+
+async function otherOwners(req: PayloadRequest, id: number | string): Promise<number> {
+  const { totalDocs } = await req.payload.count({
+    collection: 'users',
+    where: { and: [{ roles: { equals: 'owner' } }, { id: { not_equals: id } }] },
+    overrideAccess: true,
+    req,
+  })
+  return totalDocs
+}
+
+const LAST_OWNER = 'The last owner cannot be demoted or deleted. Make someone else an owner first.'
+
+const keepOneOwner: CollectionBeforeChangeHook = async ({ data, originalDoc, operation, req }) => {
+  if (operation !== 'update' || !originalDoc?.roles?.includes('owner')) return data
+  if (!data?.roles || data.roles.includes('owner')) return data
+  if ((await otherOwners(req, originalDoc.id)) === 0) throw new APIError(LAST_OWNER, 400)
+  return data
+}
+
+const keepOneOwnerOnDelete: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  const doc = await req.payload.findByID({ collection: 'users', id, overrideAccess: true, req })
+  if (!doc.roles?.includes('owner')) return
+  if ((await otherOwners(req, id)) === 0) throw new APIError(LAST_OWNER, 400)
 }
 
 // Owners manage users. Staff see only their own record (the admin needs it). Nobody else sees any.
@@ -59,6 +98,10 @@ export const Users: CollectionConfig = {
       },
     },
   ],
-  hooks: { beforeValidate: [firstUserIsOwner] },
+  hooks: {
+    beforeValidate: [firstUserIsOwner],
+    beforeChange: [keepOneOwner],
+    beforeDelete: [keepOneOwnerOnDelete],
+  },
   versions: false,
 }

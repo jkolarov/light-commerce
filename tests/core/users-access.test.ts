@@ -55,14 +55,14 @@ describe('users, roles and access rules', () => {
         data: { email: 'x@example.com', password: 'pw-x-12345', roles: ['owner'] },
         overrideAccess: false,
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow(/not allowed/i)
     await expect(
       payload.create({
         collection: 'users',
         data: { email: 'y@example.com', password: 'pw-y-12345' },
         ...as(staff),
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow(/not allowed/i)
   })
 
   it('lets anonymous visitors read nothing', async () => {
@@ -96,5 +96,47 @@ describe('users, roles and access rules', () => {
       ...as(owner),
     })
     expect(updated.roles).toEqual(['staff', 'owner'])
+  })
+
+  it('keeps at least one role when an update clears them', async () => {
+    const u = await payload.create({
+      collection: 'users',
+      data: { email: 'norole@example.com', password: 'pw-norole-1' },
+      ...as(owner),
+    })
+    const cleared = await payload.update({
+      collection: 'users',
+      id: u.id,
+      data: { roles: [] },
+      ...as(owner),
+    })
+    expect(cleared.roles).toEqual(['staff'])
+  })
+
+  describe('the last owner', () => {
+    it('cannot be demoted or deleted, but one of two owners can', async () => {
+      const second = await payload.create({
+        collection: 'users',
+        data: { email: 'second@example.com', password: 'pw-second-1', roles: ['owner'] },
+        ...as(owner),
+      })
+      // staff was made owner too in an earlier test: demote it first so two owners remain.
+      await payload.update({ collection: 'users', id: staff.id, data: { roles: ['staff'] }, ...as(owner) })
+
+      // Two owners: demoting one works.
+      await payload.update({ collection: 'users', id: second.id, data: { roles: ['staff'] }, ...as(owner) })
+
+      // One owner left: demoting, emptying and deleting are all refused.
+      for (const roles of [['staff'], []] as ('owner' | 'staff')[][]) {
+        await expect(
+          payload.update({ collection: 'users', id: owner.id, data: { roles }, ...as(owner) }),
+        ).rejects.toThrow(/last owner/i)
+      }
+      await expect(payload.delete({ collection: 'users', id: owner.id, ...as(owner) })).rejects.toThrow(
+        /last owner/i,
+      )
+      const still = await payload.findByID({ collection: 'users', id: owner.id, overrideAccess: true })
+      expect(still.roles).toEqual(['owner'])
+    })
   })
 })
