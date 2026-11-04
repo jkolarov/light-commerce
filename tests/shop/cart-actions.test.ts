@@ -65,7 +65,7 @@ describeWithShop('cart actions and view', () => {
   it('starts a cart on the first add, and keeps it in an httpOnly, SameSite=Lax cookie for the whole site', async () => {
     expect(await actions.addToCart({ productId: verveine.id, quantity: 2 })).toEqual({ ok: true })
     const saved = jar.get(cookie.CART_COOKIE)!
-    expect(saved.value).toMatch(/^\d+:[0-9a-f]{40}$/)
+    expect(saved.value).toMatch(/^\d+\.[0-9a-f]{40}$/)
     expect(saved.options).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 30 })
     expect(refresh).toHaveBeenCalled()
 
@@ -112,7 +112,7 @@ describeWithShop('cart actions and view', () => {
   it('starts a new cart when the cookie holds a wrong secret, and never touches the other cart', async () => {
     await actions.addToCart({ productId: tilleul.id, quantity: 1 })
     const original = ref()!
-    jar.set(cookie.CART_COOKIE, { value: `${original.id}:${'a'.repeat(40)}`, options: {} })
+    jar.set(cookie.CART_COOKIE, { value: `${original.id}.${'a'.repeat(40)}`, options: {} })
     expect(await cart.loadCart(payload, ref()!, 'fr')).toBeNull()
     expect(await actions.setLineQuantity({ lineId: 'anything', quantity: 2 })).toMatchObject({ ok: false })
 
@@ -198,9 +198,9 @@ describeWithShop('cart cookie', () => {
   it('reads only a well-formed cart reference', async () => {
     const { parseCartRef, formatCartRef } = await import('@/modules/shop/cart/cookie')
     const secret = 'ab12'.repeat(10)
-    expect(parseCartRef(`12:${secret}`)).toEqual({ id: 12, secret })
-    expect(formatCartRef({ id: 12, secret })).toBe(`12:${secret}`)
-    for (const value of [undefined, '', '12', `12:${secret}x`, `0:${secret}`, `-1:${secret}`, `12:${secret.toUpperCase()}`, `1 2:${secret}`, `12:${secret};x=1`]) {
+    expect(parseCartRef(`12.${secret}`)).toEqual({ id: 12, secret })
+    expect(formatCartRef({ id: 12, secret })).toBe(`12.${secret}`)
+    for (const value of [undefined, '', '12', `12:${secret}`, `12.${secret}x`, `0.${secret}`, `-1.${secret}`, `12.${secret.toUpperCase()}`, `1 2.${secret}`, `12.${secret};x=1`]) {
       expect(parseCartRef(value), String(value)).toBeNull()
     }
   })

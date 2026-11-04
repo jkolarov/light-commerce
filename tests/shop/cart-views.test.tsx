@@ -137,7 +137,8 @@ describeWithShop('cart views', () => {
       expect(html).toContain('>Passer à 2</button>')
       // The sold-out line can only be removed; the short one can only go down.
       expect(html).not.toContain('Quantité de Verveine odorante')
-      expect(html).toMatch(/aria-label="Augmenter la quantité de Tilleul" disabled=""/)
+      expect(html).toMatch(/aria-label="Augmenter la quantité de Tilleul" aria-disabled="true"/)
+      expect(html).toMatch(/aria-label="Diminuer la quantité de Tilleul" aria-disabled="false"/)
       expect(hrefs(html)).not.toContain('/fr/checkout')
       expect(html).toMatch(/<button type="button"[^>]*disabled=""[^>]*aria-describedby="([^"]+)"[^>]*>Commander<\/button><p id="\1"[^>]*>Corrigez les articles signalés pour passer commande\.<\/p>/)
     })

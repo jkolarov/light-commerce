@@ -10,6 +10,8 @@ import { formatTaxRate } from '../products/price'
 type Props = {
   cart: CartView
   locale: Locale
+  /** The drawer's tighter rows, so its lines keep the room; the VAT note only. */
+  compact?: boolean
   className?: string
 }
 
@@ -20,15 +22,15 @@ function countryNames(codes: string[], locale: Locale): string {
 }
 
 /**
- * Subtotal, shipping and total, with hairlines between them, then where the shop delivers and the
- * VAT note. The amounts come from the stored prices and `calculateShipping`; the checkout computes
+ * Subtotal, shipping and total, with hairlines between them, then where the shop delivers (not in
+ * the drawer) and the VAT note. The amounts come from the stored prices and `calculateShipping`; the checkout computes
  * the charged amount again on the server.
  */
-export function CartTotals({ cart, locale, className }: Props) {
+export function CartTotals({ cart, locale, compact = false, className }: Props) {
   const t = useTranslations('cart')
   const shopT = useTranslations('shop')
   const money = (cents: number) => formatMoney(cents, { currency: cart.currency, locale })
-  const row = 'flex items-baseline justify-between gap-x-6 py-2.5'
+  const row = cx('flex items-baseline justify-between gap-x-6', compact ? 'py-1.5' : 'py-2.5')
   return (
     <div className={className}>
       <dl className="divide-y divide-text/15">
@@ -40,13 +42,13 @@ export function CartTotals({ cart, locale, className }: Props) {
           <dt className="text-muted">{t('shipping')}</dt>
           <dd className="tabular-nums">{money(cart.shipping)}</dd>
         </div>
-        <div className={cx(row, 'pt-3.5')}>
+        <div className={cx(row, compact ? 'pt-2.5' : 'pt-3.5')}>
           <dt className="font-semibold">{t('total')}</dt>
-          <dd className="font-heading text-[1.625rem] leading-none tabular-nums">{money(cart.total)}</dd>
+          <dd className={cx('font-heading leading-none tabular-nums', compact ? 'text-[1.375rem]' : 'text-[1.625rem]')}>{money(cart.total)}</dd>
         </div>
       </dl>
-      <p className="mt-3 text-[0.9375rem] leading-snug text-muted">
-        {cart.shipsTo.length > 0 && <>{t('shipsTo', { countries: countryNames(cart.shipsTo, locale) })} </>}
+      <p className={cx('leading-snug text-muted', compact ? 'mt-2 text-sm' : 'mt-3 text-[0.9375rem]')}>
+        {!compact && cart.shipsTo.length > 0 && <>{t('shipsTo', { countries: countryNames(cart.shipsTo, locale) })} </>}
         {shopT('pricesIncludeTax', { rate: formatTaxRate(cart.taxRate, locale) })}
       </p>
     </div>

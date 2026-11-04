@@ -13,7 +13,8 @@ type Props = {
   onChange: (quantity: number) => void
   /** The product's name, for the labels ("Quantity of Lemon verbena"). */
   name: string
-  disabled?: boolean
+  /** A change is on its way: the stepper takes no other until it is done. */
+  busy?: boolean
   size?: 'regular' | 'small'
   className?: string
 }
@@ -28,8 +29,11 @@ const sizes = {
 /**
  * A quantity: − and + buttons around a number field, from 1 to `max`. The buttons say what they
  * change for screen readers; a typed number counts when the field is left or Enter is pressed.
+ *
+ * At a limit, or while busy, a button is `aria-disabled` rather than `disabled`: a disabled button
+ * drops keyboard focus, and the visitor would lose their place after every press.
  */
-export function QuantityStepper({ value, max, onChange, name, disabled = false, size = 'regular', className }: Props) {
+export function QuantityStepper({ value, max, onChange, name, busy = false, size = 'regular', className }: Props) {
   const t = useTranslations('cart')
   const [typed, setTyped] = useState<string | null>(null)
   const s = sizes[size]
@@ -41,9 +45,11 @@ export function QuantityStepper({ value, max, onChange, name, disabled = false, 
     const next = Math.min(Math.max(number, 1), Math.max(max, 1))
     if (next !== value) onChange(next)
   }
+  const canLower = !busy && value > 1
+  const canRaise = !busy && value < max
   // Focus rings sit inside the box, which clips anything outside its rounded border.
   const button = cx(
-    'inline-flex h-full items-center justify-center text-text transition-colors hover:bg-surface disabled:text-muted disabled:opacity-50 disabled:hover:bg-transparent',
+    'inline-flex h-full items-center justify-center text-text transition-colors hover:bg-surface aria-disabled:cursor-not-allowed aria-disabled:text-muted aria-disabled:opacity-50 aria-disabled:hover:bg-transparent',
     insetFocus,
     s.button,
   )
@@ -53,7 +59,7 @@ export function QuantityStepper({ value, max, onChange, name, disabled = false, 
       aria-label={t('quantityOf', { name })}
       className={cx('inline-flex items-stretch overflow-hidden rounded-[0.1875rem] border border-text/60 bg-background', s.box, className)}
     >
-      <button type="button" className={button} aria-label={t('decrease', { name })} disabled={disabled || value <= 1} onClick={() => onChange(value - 1)}>
+      <button type="button" className={button} aria-label={t('decrease', { name })} aria-disabled={!canLower} onClick={() => canLower && onChange(value - 1)}>
         <span aria-hidden="true">−</span>
       </button>
       <input
@@ -64,7 +70,7 @@ export function QuantityStepper({ value, max, onChange, name, disabled = false, 
         step={1}
         value={typed ?? String(value)}
         aria-label={t('quantity')}
-        disabled={disabled}
+        readOnly={busy}
         onChange={(event) => setTyped(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => {
@@ -74,12 +80,12 @@ export function QuantityStepper({ value, max, onChange, name, disabled = false, 
           }
         }}
         className={cx(
-          'h-full appearance-none border-x border-text/25 bg-transparent text-center tabular-nums text-text [-moz-appearance:textfield] disabled:text-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+          'h-full appearance-none border-x border-text/25 bg-transparent text-center tabular-nums text-text [-moz-appearance:textfield] read-only:text-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
           insetFocus,
           s.input,
         )}
       />
-      <button type="button" className={button} aria-label={t('increase', { name })} disabled={disabled || value >= max} onClick={() => onChange(value + 1)}>
+      <button type="button" className={button} aria-label={t('increase', { name })} aria-disabled={!canRaise} onClick={() => canRaise && onChange(value + 1)}>
         <span aria-hidden="true">+</span>
       </button>
     </div>

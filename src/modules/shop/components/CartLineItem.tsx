@@ -25,7 +25,7 @@ type Props = {
 }
 
 const quietButton = cx(
-  'rounded-[1px] text-[0.9375rem] text-muted underline decoration-1 underline-offset-[0.2em] hover:text-text disabled:opacity-50',
+  'rounded-[1px] text-[0.9375rem] text-muted underline decoration-1 underline-offset-[0.2em] hover:text-text aria-disabled:opacity-50',
   focusRing,
 )
 
@@ -47,12 +47,15 @@ export function CartLineItem({ line, locale, currency, compact = false, onRemove
   // Under the drawer's h2, or the cart page's h1.
   const Name = compact ? 'h3' : 'h2'
 
+  // While a change is on its way, buttons say so (`aria-disabled`) but keep keyboard focus.
   const setQuantity = (quantity: number) =>
+    !pending &&
     startTransition(async () => {
       const result = await setLineQuantity({ lineId: line.id, quantity })
       setError(result.ok ? null : result.problem)
     })
   const remove = () =>
+    !pending &&
     startTransition(async () => {
       const result = await removeLine({ lineId: line.id })
       if (result.ok) onRemoved(name)
@@ -103,7 +106,7 @@ export function CartLineItem({ line, locale, currency, compact = false, onRemove
             {problem?.kind === 'soldOut' && <Badge tone="accent">{shopT('outOfStock')}</Badge>}
             <span>{notice}</span>
             {problem?.kind === 'notEnoughStock' && (
-              <button type="button" className={quietButton} disabled={pending} onClick={() => setQuantity(problem.available)}>
+              <button type="button" className={quietButton} aria-disabled={pending || undefined} onClick={() => setQuantity(problem.available)}>
                 {t('keep', { count: problem.available })}
               </button>
             )}
@@ -117,11 +120,11 @@ export function CartLineItem({ line, locale, currency, compact = false, onRemove
               max={Math.max(line.maxQuantity, line.quantity)}
               onChange={setQuantity}
               name={name}
-              disabled={pending}
+              busy={pending}
               size={compact ? 'small' : 'regular'}
             />
           )}
-          <button type="button" className={quietButton} disabled={pending} onClick={remove} aria-label={t('removeItem', { name })}>
+          <button type="button" className={quietButton} aria-disabled={pending || undefined} onClick={remove} aria-label={t('removeItem', { name })}>
             {t('remove')}
           </button>
         </div>

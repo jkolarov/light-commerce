@@ -44,6 +44,7 @@ export function AddToCart({ productId, name, unitPrice, currency, locale, addabl
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (pending) return
     startTransition(async () => {
       const result = await addToCart({ productId, quantity })
       if (!result.ok) {
@@ -78,12 +79,13 @@ export function AddToCart({ productId, name, unitPrice, currency, locale, addabl
   return (
     <form onSubmit={submit} aria-busy={pending || undefined}>
       <div className="flex gap-3">
-        <QuantityStepper value={quantity} max={addable} onChange={setChosen} name={name} disabled={pending} />
+        <QuantityStepper value={quantity} max={addable} onChange={setChosen} name={name} busy={pending} />
+        {/* Not `disabled` while adding: it keeps focus, so the drawer can give it back on close. */}
         <button
           type="submit"
-          disabled={pending}
+          aria-disabled={pending || undefined}
           className={cx(
-            'inline-flex min-h-12 flex-1 items-center justify-between gap-4 rounded-[0.1875rem] bg-primary px-5 text-base font-semibold text-primary-contrast transition-colors hover:bg-primary/88 disabled:opacity-70',
+            'inline-flex min-h-12 flex-1 items-center justify-between gap-4 rounded-[0.1875rem] bg-primary px-5 text-base font-semibold text-primary-contrast transition-colors hover:bg-primary/88 aria-disabled:opacity-70',
             focusRing,
           )}
         >

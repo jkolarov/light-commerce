@@ -75,7 +75,9 @@ export function CartDrawer({ locale, cart }: Props) {
     document.documentElement.style.overflow = ''
     const back = opener.current
     opener.current = null
+    // What opened it may be gone (the last units went in the cart): then the page's main content.
     if (back instanceof HTMLElement && back.isConnected) back.focus()
+    else document.querySelector<HTMLElement>('main')?.focus()
   }
 
   const onClick = (event: MouseEvent<HTMLDialogElement>) => {
@@ -126,10 +128,10 @@ export function CartDrawer({ locale, cart }: Props) {
         {lines ? (
           <>
             <CartLines cart={lines} locale={locale} compact focusAfterRemove={titleId} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 sm:px-7" />
-            <div className="border-t border-text/15 px-5 pt-3 pb-6 sm:px-7">
-              <CartTotals cart={lines} locale={locale} />
-              <CheckoutButton cart={lines} locale={locale} className="mt-5" />
-              <p className="mt-4 text-center">
+            <div className="border-t border-text/15 px-5 pt-2 pb-5 sm:px-7 sm:pb-6">
+              <CartTotals cart={lines} locale={locale} compact />
+              <CheckoutButton cart={lines} locale={locale} className="mt-4" />
+              <p className="mt-3 text-center">
                 <Link href={cartPath(locale)} className={textLink}>
                   {t('viewCart')}
                 </Link>

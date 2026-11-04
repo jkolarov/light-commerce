@@ -4,7 +4,7 @@ import { getLightConfig } from '@/config'
 
 import type { CartRef } from './load'
 
-// Which cart is the guest's lives in one cookie: the cart's id and its secret (`<id>:<secret>`).
+// Which cart is the guest's lives in one cookie: the cart's id and its secret (`<id>.<secret>`).
 //
 // - httpOnly: page scripts can't read it, so a script injected into the page (XSS) can't copy the
 //   secret and reach the cart from elsewhere. The browser never needs it: the server reads the
@@ -23,8 +23,8 @@ import type { CartRef } from './load'
 export const CART_COOKIE = 'lc_cart'
 export const CART_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 
-/** The cart's id (`12`), a colon, then the 40 hex characters of its secret. Anything else is no cart. */
-const REF = /^([1-9][0-9]{0,14}):([0-9a-f]{40})$/
+/** The cart's id (`12`), a dot, then the 40 hex characters of its secret. Anything else is no cart. */
+const REF = /^([1-9][0-9]{0,14})\.([0-9a-f]{40})$/
 
 export function parseCartRef(value: string | undefined | null): CartRef | null {
   const match = value ? REF.exec(value) : null
@@ -32,7 +32,7 @@ export function parseCartRef(value: string | undefined | null): CartRef | null {
 }
 
 export function formatCartRef(ref: CartRef): string {
-  return `${ref.id}:${ref.secret}`
+  return `${ref.id}.${ref.secret}`
 }
 
 export function cartCookieOptions() {
