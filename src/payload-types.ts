@@ -646,6 +646,14 @@ export interface Order {
    */
   needsAttention?: boolean | null;
   attentionNote?: string | null;
+  /**
+   * The language the buyer used at the checkout.
+   */
+  locale?: string | null;
+  /**
+   * When the confirmation went to the buyer, and the notification to you. If sending failed, the order needs attention.
+   */
+  confirmationEmailSentAt?: string | null;
   accessToken?: string | null;
   settlementKey?: string | null;
   updatedAt: string;
@@ -701,6 +709,10 @@ export interface Transaction {
     | boolean
     | null;
   attentionNote?: string | null;
+  /**
+   * The language the buyer used at the checkout.
+   */
+  locale?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1139,6 +1151,8 @@ export interface OrdersSelect<T extends boolean = true> {
   linePrices?: T;
   needsAttention?: T;
   attentionNote?: T;
+  locale?: T;
+  confirmationEmailSentAt?: T;
   accessToken?: T;
   settlementKey?: T;
   updatedAt?: T;
@@ -1189,6 +1203,7 @@ export interface TransactionsSelect<T extends boolean = true> {
   shippingAmount?: T;
   linePrices?: T;
   attentionNote?: T;
+  locale?: T;
   updatedAt?: T;
   createdAt?: T;
 }

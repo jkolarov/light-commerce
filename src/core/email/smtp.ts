@@ -28,6 +28,27 @@ export function readSmtpSettings(env: Env = process.env): SmtpSettings | null {
   return { host, port, ...(user && pass ? { auth: { user, pass } } : {}) }
 }
 
+/**
+ * How long the transport waits at each step (connecting, the server's greeting, any quiet moment
+ * on the socket) before it gives up on a mail server. Short enough that a stuck server cannot
+ * outlast Docker's stop grace or hold an order's emails for minutes (nodemailer waits up to 10
+ * minutes by default).
+ */
+export const SMTP_TIMEOUT_MS = 10_000
+
+/** The nodemailer transport options for `smtp`: TLS from the start on port 465, timeouts always. */
+export function smtpTransportOptions(smtp: SmtpSettings) {
+  return {
+    host: smtp.host,
+    port: smtp.port,
+    secure: smtp.port === 465,
+    ...(smtp.auth ? { auth: smtp.auth } : {}),
+    connectionTimeout: SMTP_TIMEOUT_MS,
+    greetingTimeout: SMTP_TIMEOUT_MS,
+    socketTimeout: SMTP_TIMEOUT_MS,
+  }
+}
+
 /** A display name that cannot break out of the From header: no quotes, commas, angle brackets or line breaks (the adapter builds the header as a plain string). */
 export function safeSenderName(name: string): string {
   return name.replace(/[\r\n",;:<>]+/g, ' ').replace(/\s+/g, ' ').trim()

@@ -162,5 +162,48 @@
       "refunded": "Refunded"
     },
     "backToShop": "Back to the shop"
+  },
+  "email": {
+    "summary": "Your order",
+    "orderNumber": "Order {number}",
+    "placedOn": "Placed on {date}",
+    "quantity": "Quantity: {count}",
+    "unavailableName": "Product no longer available",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "total": "Total",
+    "row": "{label}: {value}",
+    "pricesIncludeTax": "Prices include VAT at {rate}%.",
+    "shippingAddress": "Shipping address",
+    "confirmation": {
+      "subject": "Your order {number} is confirmed",
+      "preview": "Payment received: we’re getting your order ready.",
+      "greeting": "Hello {name},",
+      "greetingNoName": "Hello,",
+      "intro": "Thank you for your order. Your payment was received, and we’re getting it ready.",
+      "viewOrder": "View my order",
+      "viewOrderText": "Your order online: {url}",
+      "keepLink": "This link opens your order: keep this email, and don’t forward it.",
+      "question": "A question, or something not right? Reply to this email, or write to us at {address}.",
+      "signOff": "See you soon,"
+    },
+    "owner": {
+      "subject": "New order {number} ({total})",
+      "subjectAttention": "Needs attention: order {number} ({total})",
+      "preview": "{name} paid {total}.",
+      "intro": "An order was just paid on {site}.",
+      "attention": "This order needs attention",
+      "buyer": "Buyer",
+      "language": "Language: {language}",
+      "openInAdmin": "Open the order",
+      "openInAdminText": "The order in the admin: {url}",
+      "replyHint": "To write to the buyer, reply to this email."
+    },
+    "notes": {
+      "confirmationFailed": "The confirmation email could not be sent to {email}: let the buyer know yourself.",
+      "noBuyerEmail": "The order has no email address: no confirmation was sent to the buyer.",
+      "notificationFailed": "The notification for this order could not be emailed to you.",
+      "sendingFailed": "The emails for this order could not be sent: let the buyer know yourself."
+    }
   }
 }

@@ -34,6 +34,11 @@ export default defineLightConfig({
     fromName: 'Les Claies',
     fromAddress: 'bonjour@lesclaies.example',
     ownerNotificationsTo: 'bonjour@lesclaies.example',
+    // The last line of every order email: the farm and the shop are made up.
+    notice: {
+      fr: 'Les Claies est une ferme inventée pour la démonstration de light-commerce : rien n’est expédié, et aucune carte n’est débitée.',
+      en: 'Les Claies is a farm invented to demonstrate light-commerce: nothing is shipped, and no card is charged.',
+    },
   },
   shop: {
     currency: 'EUR',

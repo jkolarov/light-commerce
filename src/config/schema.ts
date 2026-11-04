@@ -34,6 +34,11 @@ const localeCode = z.enum(locales, {
     `unknown locale ${JSON.stringify(issue.input)}, expected ${locales.map((code) => `"${code}"`).join(' or ')}`,
 })
 
+/** One short line of text: no line break, at most 300 characters. */
+const shortLine = text
+  .max(300, { error: 'one short line: 300 characters at most' })
+  .refine((value) => !/[\r\n]/.test(value), { error: 'one short line: no line breaks' })
+
 const shopSchema = z.strictObject({
   currency: z.literal('EUR', { error: 'expected "EUR", the only currency for now' }),
   pricesIncludeTax: z.literal(true, { error: 'expected true: prices always include tax for now' }),
@@ -109,6 +114,14 @@ export const lightConfigSchema = z
       fromName: text,
       fromAddress: email,
       ownerNotificationsTo: email,
+      /**
+       * Optional: one short line at the end of every order email, per language (for example that
+       * the site is a demo, or the company's legal name). A language without its own line gets
+       * the default language's.
+       */
+      notice: z
+        .partialRecord(localeCode, shortLine, { error: 'expected one line per language, like { fr: "…", en: "…" }' })
+        .optional(),
     }),
     /** Required when modules.shop is true. Still checked when present while the shop is off. */
     shop: shopSchema.optional(),
