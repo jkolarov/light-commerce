@@ -12,16 +12,17 @@ export async function register() {
     }
     // Last: a production server applies pending migrations before it answers, and stops if one
     // fails (src/core/dbStartup.ts). Not during `next build` or `next dev`.
+    // (Inline, inside this `if`: the edge build drops the branch, and must never see Payload.)
     const { preparesDatabaseAtStartup, prepareDatabaseOrStop } = await import('./core/dbStartup')
-    if (preparesDatabaseAtStartup()) await prepareDatabaseOrStop(startPayload)
+    if (preparesDatabaseAtStartup()) {
+      await prepareDatabaseOrStop(async () => {
+        // Payload's start: connects to the database and applies pending migrations (`prodMigrations`).
+        const { getPayload } = await import('payload')
+        const { default: config } = await import('@payload-config')
+        await getPayload({ config })
+      })
+    }
   }
-}
-
-/** Payload's start: connects to the database and applies pending migrations (`prodMigrations`). */
-async function startPayload() {
-  const { getPayload } = await import('payload')
-  const { default: config } = await import('@payload-config')
-  await getPayload({ config })
 }
 
 /** Whether a module is on. A broken config counts as off: `stopIfConfigIsBroken` has reported it. */
