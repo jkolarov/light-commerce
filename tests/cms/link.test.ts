@@ -44,6 +44,7 @@ describeWithCms('linkField in a collection', () => {
     await expect(create({ cta: { type: 'url', url: '/fr/shop' }, _status: 'published' })).rejects.toThrow()
     await expect(create({ cta: { type: 'url', label: 'x' }, _status: 'published' })).rejects.toThrow()
     await expect(create({ cta: { type: 'url', label: 'x', url: 'javascript:alert(1)' }, _status: 'published' })).rejects.toThrow()
+    await expect(create({ cta: { type: 'url', label: 'x', url: '/\t/evil.test' }, _status: 'published' })).rejects.toThrow()
   })
 
   it('follows a page link, then returns null once the page is unpublished or deleted', async () => {

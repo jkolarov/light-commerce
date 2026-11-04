@@ -1,7 +1,7 @@
 import type { Payload } from 'payload'
 import { afterAll, beforeAll, expect, it } from 'vitest'
 
-import { resolveLinkHref } from '@/modules/cms/fields/link'
+import { isValidLinkUrl, resolveLinkHref } from '@/modules/cms/fields/link'
 import { lookupPage, pageSlugs } from '@/modules/cms/pages/resolve'
 import type { User } from '@/payload-types'
 
@@ -173,6 +173,16 @@ describeWithCms('resolveLinkHref without a database', () => {
     expect(resolveLinkHref({ type: 'url', url: '//evil.test' }, 'en')).toBeNull()
     expect(resolveLinkHref({ type: 'url', url: '/\\evil.test' }, 'en')).toBeNull()
     expect(resolveLinkHref(null, 'en')).toBeNull()
+  })
+  it('drops URLs with whitespace or control characters, which browsers strip into //host', () => {
+    for (const url of ['/\t/evil.test', '/\n/evil.test', '/\r/evil.test', '/ /evil.test', '/\u0000/evil.test', '/\u007f/evil.test', 'https://exa mple.com']) {
+      expect(resolveLinkHref({ type: 'url', url }, 'en'), JSON.stringify(url)).toBeNull()
+      expect(isValidLinkUrl(url), JSON.stringify(url)).toBe(false)
+    }
+    expect(isValidLinkUrl('https://example.com/\t')).toBe(false)
+    expect(isValidLinkUrl('/fr/shop/tilleul?x=1#y')).toBe(true)
+    // The resolver trims the ends first, like a browser does, so only whitespace inside is refused.
+    expect(resolveLinkHref({ type: 'url', url: ' /fr/shop \n' }, 'fr')).toBe('/fr/shop')
   })
   it('returns null for an unloaded or unpublished page', () => {
     expect(resolveLinkHref({ type: 'page', page: 12 }, 'fr')).toBeNull()
