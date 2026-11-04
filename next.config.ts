@@ -14,6 +14,12 @@ const nextConfig: NextConfig = {
   agentRules: false,
   // The Docker image (S08) runs the standalone server from `.next/standalone`.
   output: 'standalone',
+  // The standalone trace drops `strtok3/lib/index.js` (file-type, used by Payload's upload and file
+  // serving, imports it in a way the tracer misses), so every /api/media/file/* answers 500 in the
+  // image. Copy the whole package into the output. pnpm keeps it under .pnpm/strtok3@<version>.
+  outputFileTracingIncludes: {
+    '/**': ['./node_modules/.pnpm/strtok3@*/node_modules/strtok3/**/*'],
+  },
   images: {
     localPatterns: [
       {
