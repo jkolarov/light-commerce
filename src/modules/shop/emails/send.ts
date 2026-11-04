@@ -41,10 +41,13 @@ async function claim(payload: Payload, orderId: number): Promise<boolean> {
 /**
  * The order with its products' names in `locale`, on its lines (`items[].product`), as the
  * renderers read them. Products moved to the trash still name their line; a product deleted for
- * good leaves the line without a name.
+ * good leaves the line without a name. A line charged but missing from `items` (a settlement
+ * interrupted after the order was created; the reconcile job recovers it) is added to `items` with
+ * its product, so the renderers, which list the lines as charged (`linePrices`), can name it too.
  */
 async function withProductNames(payload: Payload, order: Order, locale: Locale): Promise<Order> {
-  const ids = [...new Set([...(order.items ?? []).map((item) => productIdOf(item.product)), ...readLinePrices(order.linePrices).map((line) => String(line.product))])].filter(
+  const charged = readLinePrices(order.linePrices)
+  const ids = [...new Set([...(order.items ?? []).map((item) => productIdOf(item.product)), ...charged.map((line) => String(line.product))])].filter(
     (id): id is string => Boolean(id),
   )
   if (!ids.length) return order
@@ -63,8 +66,12 @@ async function withProductNames(payload: Payload, order: Order, locale: Locale):
     const id = productIdOf(item.product)
     return { ...item, product: (id && products.get(id)) || item.product }
   })
-  // A line priced but no longer in `items` (its product deleted for good) stays unnamed.
-  return { ...order, items }
+  const listed = new Set(items.map((item) => productIdOf(item.product)))
+  const missing = charged.flatMap((line) => {
+    const product = listed.has(String(line.product)) ? undefined : products.get(String(line.product))
+    return product ? [{ product, quantity: line.quantity }] : []
+  })
+  return { ...order, items: [...items, ...missing] }
 }
 
 /** Adds `notes` to the order's note and flags it. No hooks, no validation: like the stock notes. */

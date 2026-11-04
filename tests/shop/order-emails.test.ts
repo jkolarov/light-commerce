@@ -176,6 +176,34 @@ describeWithShop('order emails: sent once per order, after the settlement', () =
     })
   })
 
+  describe('from the reconcile job', () => {
+    it('sends them once for an order it recovers (a settlement stopped after the order was created), lines named as charged', async () => {
+      const reconcile = await import('@/modules/shop/orders/reconcile')
+      const product = await publish({ title: 'Ortie' })
+      const { id } = await paid(product)
+      const stuck = (await payments.findPaymentTransaction(payload, id))!
+      // Claimed, the order created without its lines, then the settlement stopped.
+      await payload.db.updateOne({ collection: 'transactions', id: stuck.id, data: { status: 'processing' } })
+      const order = await payload.create({
+        collection: 'orders',
+        overrideAccess: true,
+        data: { amount: stuck.amount, subtotal: stuck.subtotal, shippingAmount: stuck.shippingAmount, transactions: [stuck.id], customerEmail: 'camille@example.com', items: [], linePrices: stuck.linePrices, shippingAddress: address, currency: 'EUR' },
+      })
+      const later = new Date(Date.now() + 3_600_000)
+      const results = await reconcile.reconcilePayments(payload, { now: later })
+      expect(results.find((result) => result.transactionId === stuck.id)).toMatchObject({ action: 'recovered', orderId: order.id })
+
+      expect(toBuyer(order)).toHaveLength(1)
+      expect(toBuyer(order)[0]!.text).toContain('2 × Ortie')
+      const [owner] = toOwner(order)
+      expect(owner!.text).toContain({ fr, en }[config.locales.default].email.owner.attention) // the recovery flagged it
+      // Later runs, and a late webhook, send nothing more.
+      await reconcile.reconcilePayments(payload, { now: later })
+      expect(await webhook(succeededEvent(id))).toBe(200)
+      expect(sentFor(order)).toHaveLength(2)
+    })
+  })
+
   describe('after the settlement, never inside it', () => {
     it('sends only once the payment is settled: the transaction succeeded, the cart is bought', async () => {
       const product = await publish({ title: 'Mauve' })
