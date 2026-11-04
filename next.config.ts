@@ -3,6 +3,9 @@ import type { NextConfig } from 'next'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
+import { getLightConfig } from './src/config/index'
+import { noindexHeaders } from './src/core/seo'
+
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const nextConfig: NextConfig = {
@@ -17,6 +20,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // A site that is not indexable (the demo) tells search engines to stay away on every response.
+  headers: async () => noindexHeaders(getLightConfig().site),
   webpack: (webpackConfig) => {
     webpackConfig.resolve.extensionAlias = {
       '.cjs': ['.cts', '.cjs'],
