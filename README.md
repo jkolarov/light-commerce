@@ -32,12 +32,15 @@ The production image is multi-stage (`Dockerfile`): Node 24 slim, Next.js standa
 cp .env.example .env            # set PAYLOAD_SECRET (openssl rand -hex 32); Mailpit alone does not need it
 docker compose -f compose.dev.yml up -d mailpit                 # email catcher, UI on http://127.0.0.1:8025
 docker compose -f compose.dev.yml run --rm schema               # first run only, see below
+docker compose -f compose.dev.yml run --rm seed                 # optional: load the demo company (SEED_OWNER_* in .env)
 docker compose -f compose.dev.yml --profile app up -d --build   # the app on http://127.0.0.1:3000
 ```
 
 `NEXT_PUBLIC_*` values are inlined at build time, so they are build args (`NEXT_PUBLIC_SERVER_URL`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`); runtime secrets are plain environment variables. Host ports are loopback only and can be changed with `APP_PORT`, `MAILPIT_SMTP_PORT`, `MAILPIT_UI_PORT`.
 
 **How a fresh container gets its schema (until the baseline migration, S26).** The server runs with `NODE_ENV=production`, where Payload never pushes the schema. On start it applies the migrations in `src/migrations/index.ts` (`prodMigrations`), which is empty for now. So a new volume needs a one-off push first: `docker compose -f compose.dev.yml run --rm schema` builds the `schema` image stage (full `node_modules` and the Payload CLI, `NODE_ENV` unset) and runs `payload run scripts/docker/push-schema.ts` against `/app/data/light.db`. Run it again after a deploy that changes the schema, in a terminal: Drizzle asks before any change that would lose data. Once S26 adds the baseline migration, the container migrates on start and `payload migrate` refuses a database made this way, so start that database fresh.
+
+**Demo content.** `pnpm seed` loads the demo company from `demo/` (shape in `demo/README.md`): the owner account from `SEED_OWNER_EMAIL` and `SEED_OWNER_PASSWORD`, the photos, the pages and menus (CMS on), the products with their stock (shop on). Running it again updates the same documents and restores the demo's text and stock; an existing owner keeps their password. It refuses a database with pages, products or photos the demo doesn't have. `SEED_CONFIRM_WIPE=light.db pnpm seed --force` (the database's file name) deletes all content except the user accounts first, after saying what it is about to delete. In Docker, the `seed` service does the same from the `schema` stage, with `demo/` mounted from the checkout (it is not in the image); it pushes the schema first if the database has none (see the service's comment before using it on a migrated database).
 
 ## Status
 
