@@ -24,6 +24,8 @@ import { renderOwnerNotification } from './ownerNotification'
 //   sees it in the admin's order list. Releasing the claim instead would buy little (after a
 //   settlement Stripe gets a 200 and sends no more, and the reconcile job leaves settled payments
 //   alone) and could send a buyer the same email twice: a timeout can come after the server took it.
+//   A server stopped hard before the claim leaves the order unclaimed: the nightly sweep
+//   (./missed.ts) sends those. One stopped after the claim, mid-send, looks sent: at most once.
 // - Never fails the order: this runs after the settlement, and catches everything. The buyer's
 //   confirmation goes first, so the owner's notification can say it failed.
 

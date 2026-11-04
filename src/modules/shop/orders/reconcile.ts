@@ -3,6 +3,7 @@ import type { Payload } from 'payload'
 import type { Order, Transaction } from '@/payload-types'
 
 import { readLinePrices } from '../collections/breakdown'
+import { sendMissedOrderEmails } from '../emails/missed'
 import { formatMoney } from '../money'
 import { paymentOutcome } from '../payments/stripe/status'
 import { finalizePayment, PaymentNotSettledError } from './finalizePayment'
@@ -28,7 +29,8 @@ import { onOrderFinalized } from './finalized'
 //   is marked `failed` (no Stripe payment was made); paid at Stripe but impossible to settle here
 //   (its cart is gone) gets an `attentionNote` once, and the error log says what to do.
 //
-// Everything else is left as it is and reported.
+// Everything else is left as it is and reported. Last, the order emails a stopped server never sent
+// (S19, `sendMissedOrderEmails`).
 
 export type ReconcileAction = 'settled' | 'expired' | 'recovered' | 'failed' | 'flagged' | 'left'
 export type ReconcileResult = { transactionId: number; paymentIntentId: string | null; action: ReconcileAction; orderId?: number; reason?: string }
@@ -191,6 +193,11 @@ export async function reconcilePayments(payload: Payload, options: ReconcileOpti
     } catch (error) {
       results.push({ transactionId: transaction.id, paymentIntentId: transaction.stripe?.paymentIntentID ?? null, action: 'left', reason: error instanceof Error ? error.message : 'error' })
     }
+  }
+  try {
+    await sendMissedOrderEmails(payload, { now })
+  } catch (error) {
+    payload.logger.error({ err: error, msg: 'Shop: could not look for order emails never sent.' })
   }
   const done = results.filter((result) => result.action !== 'left')
   if (done.length) payload.logger.info({ msg: `Shop: reconciled ${done.length} payment(s): ${done.map((r) => `${r.transactionId} ${r.action}`).join(', ')}.` })

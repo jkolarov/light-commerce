@@ -204,6 +204,72 @@ describeWithShop('order emails: sent once per order, after the settlement', () =
     })
   })
 
+  describe('emails a stopped server never sent', () => {
+    const minutes = (n: number) => new Date(Date.now() + n * 60_000)
+
+    /** A paid order whose emails were scheduled after the response, and the server stopped before they ran. */
+    const lostOrder = async (title: string) => {
+      after.mockImplementation((task) => void afterTasks.push(task))
+      try {
+        const product = await publish({ title })
+        const { id } = await paid(product)
+        const { order } = await finalize.finalizePayment(payload, id)
+        expect((await reload(order)).confirmationEmailSentAt).toBeFalsy()
+        afterTasks.length = 0 // the process is gone: the tasks never run
+        return { order, id }
+      } finally {
+        after.mockImplementation(outsideRequest)
+      }
+    }
+
+    it('sends them for a paid order whose emails were never claimed, once it is half an hour old, and only once', async () => {
+      const missed = await import('@/modules/shop/emails/missed')
+      const { order } = await lostOrder('Bleuet')
+      expect(await missed.sendMissedOrderEmails(payload, { now: minutes(10) })).not.toContain(order.id) // too recent: maybe still sending
+      expect(sentFor(order)).toHaveLength(0)
+
+      expect(await missed.sendMissedOrderEmails(payload, { now: minutes(31) })).toContain(order.id)
+      expect(toBuyer(order)).toHaveLength(1)
+      expect(toOwner(order)).toHaveLength(1)
+      expect(await missed.sendMissedOrderEmails(payload, { now: minutes(31) })).not.toContain(order.id)
+      expect(sentFor(order)).toHaveLength(2)
+    })
+
+    it('is the last step of the reconcile job', async () => {
+      const reconcile = await import('@/modules/shop/orders/reconcile')
+      const { order } = await lostOrder('Coquelicot')
+      await reconcile.reconcilePayments(payload, { now: minutes(31) })
+      expect(toBuyer(order)).toHaveLength(1)
+      expect(toOwner(order)).toHaveLength(1)
+    })
+
+    it('leaves alone an order whose payment is not settled yet, and one already shipped or cancelled', async () => {
+      const missed = await import('@/modules/shop/emails/missed')
+      const stuck = await lostOrder('Camomille')
+      // A settlement that stopped half-way: the reconcile job recovers it and runs the seam itself.
+      const transaction = (await payments.findPaymentTransaction(payload, stuck.id))!
+      await payload.db.updateOne({ collection: 'transactions', id: transaction.id, data: { status: 'processing' } })
+      const shipped = await lostOrder('Aubépine')
+      await payload.db.updateOne({ collection: 'orders', id: shipped.order.id, data: { status: 'shipped' } })
+      const cancelled = await lostOrder('Primevère')
+      await payload.db.updateOne({ collection: 'orders', id: cancelled.order.id, data: { status: 'cancelled' } })
+
+      const handled = await missed.sendMissedOrderEmails(payload, { now: minutes(31) })
+      for (const { order } of [stuck, shipped, cancelled]) {
+        expect(handled).not.toContain(order.id)
+        expect(sentFor(order)).toHaveLength(0)
+      }
+    })
+
+    it('cannot tell an order claimed but never sent (killed mid-send) from one sent: it stays at most once', async () => {
+      const missed = await import('@/modules/shop/emails/missed')
+      const { order } = await lostOrder('Pensée')
+      await payload.db.updateOne({ collection: 'orders', id: order.id, data: { confirmationEmailSentAt: new Date().toISOString() } })
+      expect(await missed.sendMissedOrderEmails(payload, { now: minutes(31) })).not.toContain(order.id)
+      expect(sentFor(order)).toHaveLength(0)
+    })
+  })
+
   describe('after the settlement, never inside it', () => {
     it('sends only once the payment is settled: the transaction succeeded, the cart is bought', async () => {
       const product = await publish({ title: 'Mauve' })
