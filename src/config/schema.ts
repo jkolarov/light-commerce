@@ -3,8 +3,8 @@ import * as z from 'zod'
 import { locales } from '@/core/i18n/locales'
 
 // The shape of light.config.ts (plan, Shared contracts). Every object is strict, so a misspelt
-// key fails instead of being ignored. Messages are plain words: `formatProblems` (errors.ts)
-// prefixes each one with its path, and words "missing" and wrong-type problems itself.
+// key fails instead of being ignored. The messages here are plain words; `formatProblems`
+// (errors.ts) puts the path in front and words missing settings and wrong types itself.
 
 const text = z.string().trim().min(1, { error: 'must not be empty' })
 
