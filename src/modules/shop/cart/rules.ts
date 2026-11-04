@@ -22,12 +22,15 @@ export type CartProduct = PriceFields & { id: number | string; inventory?: numbe
  * - `soldOut`: none left
  * - `notEnoughStock`: fewer left than the line asks for (`available` of them)
  * - `tooMany`: more than `MAX_LINE_QUANTITY` of one product (`max`)
+ * - `badQuantity`: the stored quantity is not a whole number of at least 1 (a write the cart's
+ *   rules refuse today, but a cart can still hold one)
  */
 export type LineProblem =
   | { kind: 'unavailable' }
   | { kind: 'soldOut' }
   | { kind: 'notEnoughStock'; available: number }
   | { kind: 'tooMany'; max: number }
+  | { kind: 'badQuantity' }
 
 type Currency = ShopConfig['currency']
 

@@ -43,7 +43,7 @@ export function CartLineItem({ line, locale, currency, compact = false, onRemove
   const money = (cents: number) => formatMoney(cents, { currency, locale })
   const name = line.title ?? t('unavailableName')
   const { problem } = line
-  const canChange = problem?.kind !== 'unavailable' && problem?.kind !== 'soldOut'
+  const canChange = problem?.kind !== 'unavailable' && problem?.kind !== 'soldOut' && problem?.kind !== 'badQuantity'
   // Under the drawer's h2, or the cart page's h1.
   const Name = compact ? 'h3' : 'h2'
 
@@ -63,13 +63,15 @@ export function CartLineItem({ line, locale, currency, compact = false, onRemove
     })
 
   /** The quantity that fixes a line over its limit ("Change to 2"), or `null`. */
-  const keep = problem?.kind === 'notEnoughStock' ? problem.available : problem?.kind === 'tooMany' ? problem.max : null
+  const keep =
+    problem?.kind === 'notEnoughStock' ? problem.available : problem?.kind === 'tooMany' ? problem.max : problem?.kind === 'badQuantity' ? 1 : null
 
   const notice = (() => {
     if (!problem) return null
     if (problem.kind === 'soldOut') return t('lineSoldOut')
     if (problem.kind === 'unavailable') return t('lineUnavailable')
     if (problem.kind === 'tooMany') return t('lineTooMany', { max: problem.max })
+    if (problem.kind === 'badQuantity') return t('lineBadQuantity')
     return t('lineNotEnough', { count: problem.available })
   })()
 

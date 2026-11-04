@@ -9,9 +9,12 @@ import { currentCart } from './current'
 // The cart page's route: `src/app/(frontend)/[locale]/cart/page.tsx` is a thin wrapper around
 // these. It reads the visitor's cart from its cookie on each request.
 
-/** The cart page: the visitor's lines and totals, or an empty cart. */
-export async function CartPage({ locale }: { locale: Locale }) {
-  return <CartPageView cart={await currentCart(locale)} locale={locale} />
+/**
+ * The cart page: the visitor's lines and totals, or an empty cart. `changed`: the checkout sent
+ * the visitor back, because a price or the stock changed before the payment could start.
+ */
+export async function CartPage({ locale, changed = false }: { locale: Locale; changed?: boolean }) {
+  return <CartPageView cart={await currentCart(locale)} locale={locale} changed={changed} />
 }
 
 /** "Your cart", kept out of search engines: every visitor's cart page is their own. */

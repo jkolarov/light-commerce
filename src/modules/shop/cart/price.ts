@@ -2,14 +2,18 @@ import type { ShopConfig } from '@/config'
 
 import { productPrice } from '../products/price'
 import { calculateShipping } from '../shipping/calculate'
-import { type CartProduct, type LineProblem, lineProblem, productIdOf } from './rules'
+import { type CartProduct, isQuantity, type LineProblem, lineProblem, productIdOf } from './rules'
 
 // What a cart costs, from today's stored prices: the one calculation the cart page, the drawer
 // and the checkout (S17) share. The cart's own `subtotal` field is never used: the plugin writes
 // it at the last cart change, so it goes stale after a price change, still counts a line whose
 // price was switched off, and holds whatever a broken write left there.
 
-/** A cart line as stored (`carts.items`): the product as an id or a loaded document. */
+/**
+ * A cart line as stored (`carts.items`): the product as an id or a loaded document. `quantity` is
+ * whatever the database holds: a line whose quantity is not a whole number of at least 1 is
+ * flagged (`badQuantity`) and left out of the totals, so money stays in whole cents.
+ */
 export type CartItemLike = { id?: string | null; product?: unknown; quantity: number }
 
 export type PricedLine = {
@@ -52,26 +56,29 @@ export function priceCart(
   const totals = new Map<string, number>()
   for (const item of items) {
     const id = productIdOf(item.product)
-    if (id) totals.set(id, (totals.get(id) ?? 0) + item.quantity)
+    if (id && isQuantity(item.quantity)) totals.set(id, (totals.get(id) ?? 0) + item.quantity)
   }
   const lines = items.map((item): PricedLine => {
     const productId = productIdOf(item.product)
     const product = productId ? (products.get(productId) ?? null) : null
     const unitPrice = product ? productPrice(product, shop.currency) : null
+    const quantityOk = isQuantity(item.quantity)
     return {
       id: item.id ?? null,
       productId,
       quantity: item.quantity,
       unitPrice,
-      lineTotal: unitPrice === null ? null : unitPrice * item.quantity,
-      problem: lineProblem(product, productId ? totals.get(productId)! : item.quantity, shop.currency),
+      lineTotal: unitPrice === null || !quantityOk ? null : unitPrice * item.quantity,
+      problem: quantityOk
+        ? lineProblem(product, productId ? totals.get(productId)! : item.quantity, shop.currency)
+        : { kind: 'badQuantity' },
     }
   })
   const subtotal = lines.reduce((sum, line) => sum + (line.lineTotal ?? 0), 0)
   const shipping = calculateShipping({ subtotal }, shop.shipping).amount
   return {
     lines,
-    count: lines.reduce((sum, line) => sum + line.quantity, 0),
+    count: lines.reduce((sum, line) => sum + (isQuantity(line.quantity) ? line.quantity : 0), 0),
     subtotal,
     shipping,
     total: subtotal + shipping,

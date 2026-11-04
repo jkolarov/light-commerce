@@ -646,6 +646,11 @@ export interface Transaction {
         id?: string | null;
       }[]
     | null;
+  paymentMethod?: 'stripe' | null;
+  stripe?: {
+    customerID?: string | null;
+    paymentIntentID?: string | null;
+  };
   billingAddress?: {
     title?: string | null;
     firstName?: string | null;
@@ -666,6 +671,8 @@ export interface Transaction {
   cart?: (number | null) | Cart;
   amount?: number | null;
   currency?: 'EUR' | null;
+  subtotal?: number | null;
+  shippingAmount?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1114,6 +1121,13 @@ export interface TransactionsSelect<T extends boolean = true> {
         quantity?: T;
         id?: T;
       };
+  paymentMethod?: T;
+  stripe?:
+    | T
+    | {
+        customerID?: T;
+        paymentIntentID?: T;
+      };
   billingAddress?:
     | T
     | {
@@ -1136,6 +1150,8 @@ export interface TransactionsSelect<T extends boolean = true> {
   cart?: T;
   amount?: T;
   currency?: T;
+  subtotal?: T;
+  shippingAmount?: T;
   updatedAt?: T;
   createdAt?: T;
 }
