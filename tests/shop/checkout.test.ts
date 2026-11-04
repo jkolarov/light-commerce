@@ -2,10 +2,11 @@ import type { PaymentAdapter } from '@payloadcms/plugin-ecommerce/types'
 import { createPayloadRequest, handleEndpoints, type Payload } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Cart, Product, Transaction } from '@/payload-types'
+import type { Cart, Product } from '@/payload-types'
 
 import { describeWithShop } from '../support/modules'
 import { startPayload, type TestPayload } from '../support/payload'
+import { STRIPE_TEST_ENV, stripe } from '../support/stripe'
 
 // The checkout's money path, through the real thing: the ecommerce plugin's `initiate` and
 // `confirm-order` endpoints, the shop's Stripe wrapper (src/modules/shop/payments/stripe/), the
@@ -16,86 +17,11 @@ import { startPayload, type TestPayload } from '../support/payload'
 // `confirmOrder` checks the PaymentIntent the way the real one does, then finalizes the order.
 // So what the fake "charges" is exactly what Stripe would.
 
-type Intent = { amount: number; status: string; items: unknown[]; shippingAddress: unknown }
-
-const stripe = vi.hoisted(() => ({
-  intents: new Map<string, Intent>(),
-  next: 0,
-  /** Makes the next `confirmOrder` fail after the payment succeeded (settlement trouble). */
-  breakSettlement: false,
-  /** How many times the plugin's `confirm-order` reached the adapter. */
-  confirmCalls: 0,
-}))
+// Stripe itself is stood in for at the wrapper's boundary (tests/support/stripe.ts).
+vi.mock('@payloadcms/plugin-ecommerce/payments/stripe', async (original) => (await import('../support/stripe')).fakeStripeAdapterModule(await original()))
+vi.mock('@/modules/shop/payments/stripe/status', async () => (await import('../support/stripe')).fakeStatusModule())
 
 type InitiateArgs = Parameters<PaymentAdapter['initiatePayment']>[0]
-type ConfirmArgs = Parameters<PaymentAdapter['confirmOrder']>[0]
-
-vi.mock('@payloadcms/plugin-ecommerce/payments/stripe', async (importOriginal) => {
-  const real = (await importOriginal()) as { stripeAdapter: (props: unknown) => PaymentAdapter }
-  return {
-    ...real,
-    stripeAdapter: (props: unknown): PaymentAdapter => ({
-      ...real.stripeAdapter(props),
-      initiatePayment: async ({ data, req, transactionsSlug }: InitiateArgs) => {
-        const id = `pi_fake${++stripe.next}`
-        const amount = data.cart.subtotal as number
-        // Like the real adapter: every property of a line is kept, its id included.
-        const items = data.cart.items.map(({ product, variant: _variant, ...rest }) => ({
-          ...rest,
-          product: typeof product === 'object' ? product.id : product,
-        }))
-        stripe.intents.set(id, { amount, status: 'requires_payment_method', items, shippingAddress: data.shippingAddress })
-        await req.payload.create({
-          collection: transactionsSlug as 'transactions',
-          data: {
-            customerEmail: data.customerEmail,
-            amount,
-            billingAddress: data.billingAddress,
-            cart: data.cart.id as number,
-            currency: 'EUR',
-            items: items as Transaction['items'],
-            paymentMethod: 'stripe',
-            status: 'pending',
-            stripe: { customerID: 'cus_fake', paymentIntentID: id },
-          },
-          overrideAccess: true,
-          req,
-        })
-        return { clientSecret: `${id}_secret_fake`, message: 'Payment initiated successfully', paymentIntentID: id }
-      },
-      confirmOrder: async ({ data, finalizeOrder, req, transactionsSlug }: ConfirmArgs) => {
-        stripe.confirmCalls++
-        const intent = stripe.intents.get(data.paymentIntentID)
-        const { docs } = await req.payload.find({
-          collection: transactionsSlug as 'transactions',
-          where: { 'stripe.paymentIntentID': { equals: data.paymentIntentID } },
-          depth: 0,
-          overrideAccess: true,
-          req,
-        })
-        const transaction = docs[0]
-        if (!intent || docs.length !== 1 || !transaction) throw new Error('Expected exactly one transaction')
-        if (intent.amount !== transaction.amount) throw new Error('Stripe amount does not match the transaction amount')
-        if (intent.status !== 'succeeded') throw new Error('Payment not completed.')
-        if (stripe.breakSettlement) throw new Error('Something broke during settlement')
-        const order = await finalizeOrder({
-          orderData: { amount: transaction.amount, currency: transaction.currency, customerEmail: data.customerEmail, items: intent.items, shippingAddress: intent.shippingAddress, status: 'processing' },
-          transactionID: transaction.id,
-        })
-        return { message: 'Order confirmed', orderID: order.id as number, transactionID: transaction.id }
-      },
-    }),
-  }
-})
-
-// Where a PaymentIntent stands at "Stripe", for the return path.
-vi.mock('@/modules/shop/payments/stripe/status', () => ({
-  paymentOutcome: async (id: string) => {
-    const status = stripe.intents.get(id)?.status
-    if (!status) throw new Error(`No such PaymentIntent: ${id}`)
-    return status === 'succeeded' ? 'succeeded' : status === 'processing' ? 'processing' : 'failed'
-  },
-}))
 
 type Cookie = { value: string; options: Record<string, unknown> }
 const jar = new Map<string, Cookie>()
@@ -185,8 +111,7 @@ describeWithShop('checkout: what is charged, and the way back', () => {
   let tilleul: Product // 8.50 €, stock not tracked
 
   beforeAll(async () => {
-    // Placeholder keys, so the plugin's webhook endpoint checks signatures. Nothing calls Stripe.
-    test = await startPayload({ STRIPE_SECRET_KEY: 'test-placeholder-secret', STRIPE_WEBHOOKS_SIGNING_SECRET: 'test-placeholder-signing' })
+    test = await startPayload(STRIPE_TEST_ENV)
     payload = test.payload
     actions = await import('@/modules/shop/checkout/actions')
     wrap = await import('@/modules/shop/payments/stripe/wrap')
@@ -511,21 +436,14 @@ describeWithShop('checkout: what is charged, and the way back', () => {
       expect(await back(['pi_fake1'])).toEqual({ kind: 'unknown' })
     })
 
-    it('has today’s webhook: unsigned 200, bad signature 400, nothing written either way (S18 refuses unsigned)', async () => {
-      const count = async () => ({
-        orders: (await payload.count({ collection: 'orders', overrideAccess: true })).totalDocs,
-        transactions: (await payload.count({ collection: 'transactions', overrideAccess: true })).totalDocs,
-      })
-      const before = await count()
-      const event = JSON.stringify({ id: 'evt_fake', type: 'payment_intent.succeeded', data: { object: { id: 'pi_fake1' } } })
-      expect((await rest('/payments/stripe/webhooks', event)).status).toBe(200)
-      expect((await rest('/payments/stripe/webhooks', event, { 'stripe-signature': 't=1,v1=bad' })).status).toBe(400)
-      expect(await count()).toEqual(before)
-    })
-
-    it('goes to the order page with its access token, once orders have one', () => {
-      expect(confirm.outcomePath('fr', { kind: 'order', orderId: 12, accessToken: 'abc' })).toBe('/fr/order/12?token=abc')
-      // Until S18 adds the token, the order can't be shown: "payment received".
+    it('goes to the order page with its access token', async () => {
+      const { id } = await startedPayment([{ product: tilleul.id, quantity: 1 }])
+      stripe.pay(id)
+      const outcome = await back(id)
+      if (outcome.kind !== 'order') throw new Error(`expected an order, got ${outcome.kind}`)
+      expect(outcome.accessToken).toMatch(/^[A-Za-z0-9_-]{43}$/)
+      expect(confirm.outcomePath('fr', outcome)).toBe(`/fr/order/${outcome.orderId}?token=${outcome.accessToken}`)
+      // An order without a token (none is made without one) can't be shown: "payment received".
       expect(confirm.outcomePath('fr', { kind: 'order', orderId: 12, accessToken: null })).toBe('/fr/checkout/received')
     })
   })

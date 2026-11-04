@@ -61,6 +61,14 @@ describe('shop routes with the shop off', () => {
     expect(res.status).toBe(404)
   })
 
+  it('answers 404 for an order’s confirmation page, with no metadata', async () => {
+    shopOff()
+    const route = await import('@/app/(frontend)/[locale]/order/[id]/page')
+    const params = Promise.resolve({ locale: 'fr', id: '1' })
+    await expect(route.default({ params, searchParams: Promise.resolve({ token: 'x' }) })).rejects.toMatchObject(NOT_FOUND)
+    expect(await route.generateMetadata({ params })).toEqual({})
+  })
+
   it('answers 404 for an unknown locale with the shop on too', async () => {
     process.env.LIGHT_CI_MODULES = 'shop'
     const route = await import('@/app/(frontend)/[locale]/shop/[slug]/page')

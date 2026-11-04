@@ -142,8 +142,25 @@
   "order": {
     "title": "Confirmation de commande",
     "thankYou": "Merci pour votre commande !",
+    "thankYouName": "Merci, {name} !",
     "number": "Numéro de commande",
+    "placed": "Commande n° {number}, passée le {date}.",
+    "intro": "Votre paiement est bien reçu, et votre commande est en préparation.",
+    "keepLink": "Gardez l’adresse de cette page : c’est le lien vers votre commande.",
+    "question": "Une question, ou quelque chose ne va pas ? Écrivez-nous à <email>{address}</email>.",
     "confirmationSent": "Un e-mail de confirmation vous a été envoyé.",
-    "status": "Statut"
+    "details": "Détails de la commande",
+    "contact": "Coordonnées",
+    "shippingAddress": "Adresse de livraison",
+    "payment": "Paiement",
+    "paidOn": "Payée en ligne le {date}.",
+    "status": "Statut",
+    "statuses": {
+      "processing": "Payée, en préparation",
+      "shipped": "Expédiée",
+      "cancelled": "Annulée",
+      "refunded": "Remboursée"
+    },
+    "backToShop": "Retour à la boutique"
   }
 }

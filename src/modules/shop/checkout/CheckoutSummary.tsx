@@ -3,17 +3,19 @@ import { useTranslations } from 'next-intl'
 import type { Locale } from '@/core/i18n/locales'
 import { Heading } from '@/theme'
 
-import type { CartView } from '../cart/load'
-import { CartTotals } from '../components/CartTotals'
+import type { CartLine } from '../cart/load'
+import { CartTotals, type Totals } from '../components/CartTotals'
 import { PhotoTile, tilePhoto } from '../components/PhotoTile'
 import { formatMoney } from '../money'
 
+/** What the summary shows: the cart at the checkout, or a paid order on its confirmation page. */
+export type Summary = Totals & { count: number; lines: Pick<CartLine, 'id' | 'title' | 'image' | 'quantity' | 'lineTotal'>[] }
+
 /**
- * What the visitor is about to pay for: each line with its photo, name, quantity and total, then
- * subtotal, shipping, total and the VAT note (the cart's own totals). Read-only: changes happen in
- * the cart.
+ * What the visitor pays (or paid) for: each line with its photo, name, quantity and total, then
+ * subtotal, shipping, total and the VAT note (the cart's own totals). Read-only.
  */
-export function CheckoutSummary({ cart, locale, headingId }: { cart: CartView; locale: Locale; headingId: string }) {
+export function CheckoutSummary({ cart, locale, headingId }: { cart: Summary; locale: Locale; headingId: string }) {
   const t = useTranslations('checkout')
   const cartT = useTranslations('cart')
   const money = (cents: number) => formatMoney(cents, { currency: cart.currency, locale })

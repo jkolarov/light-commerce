@@ -10,7 +10,7 @@
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "OrderStatus".
  */
-export type OrderStatus = ('processing' | 'completed' | 'cancelled' | 'refunded') | null;
+export type OrderStatus = ('processing' | 'shipped' | 'cancelled' | 'refunded') | null;
 /**
  * Supported timezones in IANA format.
  *
@@ -630,6 +630,24 @@ export interface Order {
   status?: OrderStatus;
   amount?: number | null;
   currency?: 'EUR' | null;
+  subtotal?: number | null;
+  shippingAmount?: number | null;
+  linePrices?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Set when something needs you (stock ran out after the payment). Untick it once handled.
+   */
+  needsAttention?: boolean | null;
+  attentionNote?: string | null;
+  accessToken?: string | null;
+  settlementKey?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -673,6 +691,16 @@ export interface Transaction {
   currency?: 'EUR' | null;
   subtotal?: number | null;
   shippingAmount?: number | null;
+  linePrices?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  attentionNote?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1106,6 +1134,13 @@ export interface OrdersSelect<T extends boolean = true> {
   status?: T;
   amount?: T;
   currency?: T;
+  subtotal?: T;
+  shippingAmount?: T;
+  linePrices?: T;
+  needsAttention?: T;
+  attentionNote?: T;
+  accessToken?: T;
+  settlementKey?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1152,6 +1187,8 @@ export interface TransactionsSelect<T extends boolean = true> {
   currency?: T;
   subtotal?: T;
   shippingAmount?: T;
+  linePrices?: T;
+  attentionNote?: T;
   updatedAt?: T;
   createdAt?: T;
 }

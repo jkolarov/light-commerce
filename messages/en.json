@@ -142,8 +142,25 @@
   "order": {
     "title": "Order confirmation",
     "thankYou": "Thank you for your order!",
+    "thankYouName": "Thank you, {name}!",
     "number": "Order number",
+    "placed": "Order {number}, placed on {date}.",
+    "intro": "Your payment was received, and your order is being prepared.",
+    "keepLink": "Keep this page’s address: it is the link to your order.",
+    "question": "A question, or something not right? Write to us at <email>{address}</email>.",
     "confirmationSent": "We sent a confirmation to your email.",
-    "status": "Status"
+    "details": "Order details",
+    "contact": "Contact",
+    "shippingAddress": "Shipping address",
+    "payment": "Payment",
+    "paidOn": "Paid online on {date}.",
+    "status": "Status",
+    "statuses": {
+      "processing": "Paid, being prepared",
+      "shipped": "Shipped",
+      "cancelled": "Cancelled",
+      "refunded": "Refunded"
+    },
+    "backToShop": "Back to the shop"
   }
 }

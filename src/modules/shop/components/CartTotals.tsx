@@ -7,8 +7,11 @@ import type { CartView } from '../cart/load'
 import { formatMoney } from '../money'
 import { formatTaxRate } from '../products/price'
 
+/** What the totals show: a cart's, or a paid order's (no `shipsTo` there). */
+export type Totals = Pick<CartView, 'subtotal' | 'shipping' | 'total' | 'currency' | 'shipsTo' | 'taxRate'>
+
 type Props = {
-  cart: CartView
+  cart: Totals
   locale: Locale
   /** The drawer's tighter rows, so its lines keep the room; the VAT note only. */
   compact?: boolean

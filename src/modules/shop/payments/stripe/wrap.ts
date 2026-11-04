@@ -6,7 +6,9 @@ import type { PayloadRequest } from 'payload'
 import { priceGuestCart } from '../../cart/load'
 import type { CartPricing } from '../../cart/price'
 import { checkDetails, toPaymentAddress } from '../../checkout/details'
+import type { LinePrice } from '../../collections/breakdown'
 import { shopConfig } from '../../config'
+import { clampOversold, stockShortfalls } from '../../orders/stock'
 import { lineSnapshot, STRIPE_METADATA_LIMIT } from './metadata'
 
 // The wrapper around the ecommerce plugin's Stripe adapter (plan, "Cart (S16)", "Checkout (S17)"
@@ -35,11 +37,16 @@ import { lineSnapshot, STRIPE_METADATA_LIMIT } from './metadata'
 //   before any call to Stripe otherwise.
 // - The inner adapter is handed `total` as the subtotal, so that is what the PaymentIntent charges.
 //
-// Afterwards the transaction gets `subtotal` and `shippingAmount` (subtotal + shippingAmount ===
-// amount), and the update must have matched exactly one transaction.
+// Afterwards the transaction gets `subtotal`, `shippingAmount` (subtotal + shippingAmount ===
+// amount) and `linePrices`, and the update must have matched exactly one transaction.
 //
-// `confirmOrder` is the inner one for now. S18 wraps it (stock check, copying the breakdown onto
-// the order) and adds the webhook that settles a payment when the browser never comes back.
+// `confirmOrder` (S18) settles a payment, whoever asks: the browser's return and the webhook both
+// go through `finalizePayment` (orders/finalizePayment.ts) and the plugin's `confirm-order`, which
+// claims the transaction atomically, so one payment makes one order. The wrapper hands the
+// plugin's `finalizeOrder` the order's extra data: the breakdown and line prices copied from the
+// transaction, and a note when the stock left can't cover the order (orders/stock.ts). After the
+// order exists, the call that created it (and only that one: a late or losing call gets the same
+// order back, made by another) sets any stock below 0 back to 0, without ever throwing.
 
 /** The key in `req.context` where the checkout and the wrapper meet. */
 export const CHECKOUT_CONTEXT = 'lightCheckout'
@@ -130,10 +137,43 @@ export function withCheckoutRules(inner: PaymentAdapter): PaymentAdapter {
       await storeBreakdown(req, result.paymentIntentID, pricing)
       return result
     },
+
+    confirmOrder: (args) =>
+      inner.confirmOrder({
+        ...args,
+        // Called once per `confirm-order`, after the inner adapter checked the payment at Stripe.
+        finalizeOrder: async ({ orderData, transactionID }) => {
+          const { req } = args
+          // Before the plugin claims the transaction: reads only, so a throw leaves it pending.
+          const transaction = await req.payload.findByID({ collection: 'transactions', id: transactionID as number, depth: 0, overrideAccess: true, disableErrors: true, req })
+          const lines = transaction?.items ?? []
+          const shortfalls = await stockShortfalls(req, lines)
+          // Only the call whose data the plugin used to create the order gets its key back.
+          const settlementKey = randomBytes(12).toString('hex')
+          const order = await args.finalizeOrder({
+            transactionID,
+            orderData: {
+              ...orderData,
+              settlementKey,
+              subtotal: transaction?.subtotal ?? null,
+              shippingAmount: transaction?.shippingAmount ?? null,
+              linePrices: transaction?.linePrices ?? null,
+              ...(shortfalls.length ? { needsAttention: true, attentionNote: shortfalls.join('\n') } : {}),
+            },
+          })
+          // The order exists: from here on nothing may throw.
+          if (order.settlementKey === settlementKey) await clampOversold(req, lines, order)
+          return order
+        },
+      }),
   }
 }
 
-/** Writes `subtotal` and `shippingAmount` on the payment's transaction, which must be exactly one. */
+/** Each line's price as charged (the cart could check out, so every line has one). */
+const linePricesOf = (pricing: CartPricing): LinePrice[] =>
+  pricing.lines.map((line) => ({ product: line.productId ?? '', quantity: line.quantity, unitPrice: line.unitPrice ?? 0, lineTotal: line.lineTotal ?? 0 }))
+
+/** Writes the breakdown and line prices on the payment's transaction, which must be exactly one. */
 async function storeBreakdown(req: PayloadRequest, paymentIntentID: unknown, pricing: CartPricing): Promise<void> {
   if (typeof paymentIntentID !== 'string' || !paymentIntentID) {
     throw new Error('The Stripe adapter returned no PaymentIntent ID.')
@@ -142,7 +182,7 @@ async function storeBreakdown(req: PayloadRequest, paymentIntentID: unknown, pri
   const { docs, errors } = await req.payload.update({
     collection: 'transactions',
     where: { 'stripe.paymentIntentID': { equals: paymentIntentID } },
-    data: { subtotal: pricing.subtotal, shippingAmount: pricing.shipping },
+    data: { subtotal: pricing.subtotal, shippingAmount: pricing.shipping, linePrices: linePricesOf(pricing) },
     depth: 0,
     overrideAccess: true,
     req,

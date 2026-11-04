@@ -6,6 +6,7 @@ import { forcePublishedForPublic, readVersions } from '@/core/access/drafts'
 
 import { shopGroup } from './admin'
 import { CENTS_MESSAGE, mapFields, refuseUnlessWhole, requiredInDefaultLocale, slugify, wholeCents, wholeUnits } from './fields'
+import { keepProductsOfOrders } from './keepReferenced'
 import { applyStockChange, loadedInventoryField, rememberLoadedStock, showLiveStock, takeStockChange } from './liveStock'
 import { publishInEveryLocale } from './publishing'
 
@@ -133,6 +134,8 @@ export const productsOverride: CollectionOverride = ({ defaultCollection }) => (
     // Stock lives on the live product only (liveStock.ts).
     afterRead: [...(defaultCollection.hooks?.afterRead ?? []), rememberLoadedStock],
     afterChange: [...(defaultCollection.hooks?.afterChange ?? []), applyStockChange],
+    // Never for good while an order or a payment being settled needs it (./keepReferenced.ts).
+    beforeDelete: [...(defaultCollection.hooks?.beforeDelete ?? []), keepProductsOfOrders],
   },
   // Drafts without autosave, like pages: a draft is saved only when someone clicks "Save draft".
   versions: { drafts: true },
