@@ -50,12 +50,25 @@ describe('defineLightConfig', () => {
 
     it('a colour that is not a CSS colour', () => {
       const [problem] = problemsOf((c) => (c.theme.colors.primary = 'mallow; color: red'))
-      expect(problem).toMatch(/^theme\.colors\.primary: expected a CSS colour/)
+      expect(problem).toMatch(/^theme\.colors\.primary: expected a hex colour or a CSS colour function/)
+    })
+
+    it('a named colour, with a message that says why', () => {
+      const [problem] = problemsOf((c) => (c.theme.colors.primary = 'white'))
+      expect(problem).toMatch(/^theme\.colors\.primary: expected a hex colour or a CSS colour function/)
     })
 
     it('an unknown locale', () => {
       const [problem] = problemsOf((c) => (c.locales.available = ['fr', 'de']))
       expect(problem).toMatch(/^locales\.available\[1\]: unknown locale "de", expected "fr" or "en"/)
+    })
+
+    it('a missing default locale', () => {
+      expect(problemsOf((c) => delete c.locales.default)).toEqual(['locales.default: is missing'])
+    })
+
+    it('a missing fixed value', () => {
+      expect(problemsOf((c) => delete c.shop.currency)).toEqual(['shop.currency: is missing'])
     })
 
     it('a default locale that is not in the available locales', () => {
@@ -153,7 +166,7 @@ describe('defineLightConfig', () => {
     delete input.site.name
     input.theme.colors.primary = 'nope'
     expect(() => defineLightConfig(input)).toThrow(
-      /light\.config\.ts is not valid \(2 problems\):\n {2}- site\.name: is missing\n {2}- theme\.colors\.primary: expected a CSS colour/,
+      /light\.config\.ts is not valid \(2 problems\):\n {2}- site\.name: is missing\n {2}- theme\.colors\.primary: expected a hex colour/,
     )
   })
 
@@ -170,7 +183,7 @@ describe('defineLightConfig', () => {
 describe('a broken light.config.ts', () => {
   it('fails when it is imported, with the problems in the message', async () => {
     await expect(import('./fixtures/broken.light.config')).rejects.toThrow(
-      /theme\.colors\.primary: expected a CSS colour/,
+      /theme\.colors\.primary: expected a hex colour or a CSS colour function/,
     )
   })
 })

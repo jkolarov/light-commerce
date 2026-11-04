@@ -10,13 +10,17 @@ const text = z.string().trim().min(1, { error: 'must not be empty' })
 
 const email = z.email({ error: 'expected an email address, like "hello@example.com"' })
 
-// Hex (#rgb, #rgba, #rrggbb, #rrggbbaa) or a CSS colour function. Only characters a colour needs,
-// because S22 writes these values into CSS custom properties.
+// Hex (#rgb, #rgba, #rrggbb, #rrggbbaa) or a CSS colour function, not named colours ("white"):
+// a name list would let a typo like "mallow" through. Only characters a colour needs, because
+// S22 writes these values into CSS custom properties.
 const cssColour = z
   .string()
   .regex(
     /^(?:#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\([0-9a-z.,%/+\-\s]+\))$/i,
-    { error: 'expected a CSS colour, like "#7A3B6E", "rgb(122 59 110)" or "oklch(0.45 0.1 330)"' },
+    {
+      error:
+        'expected a hex colour or a CSS colour function, like "#7A3B6E", "rgb(122 59 110)" or "oklch(0.45 0.1 330)"',
+    },
   )
 
 const fontFamily = z

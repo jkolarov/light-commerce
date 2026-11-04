@@ -35,8 +35,11 @@ export function formatProblems(issues: readonly z.core.$ZodIssue[]): string[] {
 }
 
 function describe(issue: z.core.$ZodIssue): string {
+  // A missing setting fails a type check, or a choice check for enums and literals.
+  if ((issue.code === 'invalid_type' || issue.code === 'invalid_value') && issue.input === undefined) {
+    return 'is missing'
+  }
   if (issue.code === 'invalid_type') {
-    if (issue.input === undefined) return 'is missing'
     // `int` and other refined types keep the schema's own message.
     const expected = expectedTypes[issue.expected]
     if (expected) return expected
