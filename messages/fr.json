@@ -38,7 +38,15 @@
     "addToCart": "Ajouter au panier",
     "outOfStock": "Épuisé",
     "inStock": "En stock",
-    "noProducts": "Aucun produit pour le moment."
+    "lowStock": "{count, plural, one {Plus qu’un seul en stock} other {Plus que # en stock}}",
+    "soldOutNotice": "Il n’en reste plus pour le moment.",
+    "noProducts": "Aucun produit pour le moment.",
+    "taxIncluded": "TVA {rate} % incluse",
+    "pricesIncludeTax": "Prix TTC, TVA {rate} % incluse.",
+    "breadcrumb": "Fil d’Ariane",
+    "facts": "Caractéristiques",
+    "photos": "Photos du produit",
+    "showPhoto": "Afficher la photo {index} sur {count}"
   },
   "cart": {
     "title": "Votre panier",
