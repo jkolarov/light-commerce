@@ -11,6 +11,8 @@ export const dynamic = 'force-dynamic'
 
 type Props = {
   params: Promise<{ locale: string }>
+  /** `notice=changed`: the checkout sent the visitor back (a price or the stock changed). */
+  searchParams?: Promise<{ notice?: string | string[] }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -20,9 +22,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return cartMetadata(locale)
 }
 
-export default async function CartRoute({ params }: Props) {
+export default async function CartRoute({ params, searchParams }: Props) {
   const { locale } = await params
   if (!isLocale(locale) || !getLightConfig().modules.shop) notFound()
   const { CartPage } = await import('@/modules/shop/cart/route')
-  return <CartPage locale={locale} />
+  return <CartPage locale={locale} changed={(await searchParams)?.notice === 'changed'} />
 }

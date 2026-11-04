@@ -11,6 +11,7 @@ import { cartsOverride } from './collections/Carts'
 import { ordersOverride } from './collections/Orders'
 import { productsOverride } from './collections/Products'
 import { transactionsOverride } from './collections/Transactions'
+import { stripePaymentMethod } from './payments/stripe'
 
 // The shop module: wraps Payload's ecommerce plugin (products, stock, carts, orders) and adds
 // shipping, checkout and order emails. It registers its own collections, hooks and endpoints on
@@ -26,6 +27,7 @@ export const shopPlugin =
       throw new Error('The shop module is on but light.config.ts has no `shop` section.')
     }
     const currency = currencies[config.shop.currency]
+    const currenciesConfig = { supportedCurrencies: [currency], defaultCurrency: currency.code }
     // The shop's block for CMS pages, when the CMS is on (found in the config, never imported).
     return ecommercePlugin({
       access: {
@@ -42,14 +44,15 @@ export const shopPlugin =
       },
       // The plugin's customers are our users (no separate customers collection).
       customers: { slug: 'users' },
-      currencies: { supportedCurrencies: [currency], defaultCurrency: currency.code },
+      currencies: currenciesConfig,
       // Guest carts, reached with the cart's secret. The matcher survives lines whose product was deleted.
       carts: { allowGuestCarts: true, cartItemMatcher, cartsCollectionOverride: cartsOverride },
       addresses: { addressesCollectionOverride: addressesOverride },
       orders: { ordersCollectionOverride: ordersOverride },
-      transactions: { transactionsCollectionOverride: transactionsOverride },
+      transactions: { transactionsCollectionOverride: transactionsOverride(currenciesConfig) },
       // Variants are off: they add three collections and the plugin skips their stock check.
       products: { variants: false, productsCollectionOverride: productsOverride },
-      // No payment method yet: S17 adds the Stripe adapter from src/modules/shop/payments/stripe/.
+      // Stripe, through the shop's wrapper: it charges the cart's price today plus shipping.
+      payments: { paymentMethods: [stripePaymentMethod()] },
     })(addProductGridToPages(incomingConfig))
   }

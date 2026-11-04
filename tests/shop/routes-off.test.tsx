@@ -45,6 +45,22 @@ describe('shop routes with the shop off', () => {
     expect(await route.generateMetadata({ params })).toEqual({})
   })
 
+  it('answers 404 for the checkout and its "payment received" page, with no metadata', async () => {
+    shopOff()
+    const params = Promise.resolve({ locale: 'fr' })
+    for (const route of [await import('@/app/(frontend)/[locale]/checkout/page'), await import('@/app/(frontend)/[locale]/checkout/received/page')]) {
+      await expect(route.default({ params })).rejects.toMatchObject(NOT_FOUND)
+      expect(await route.generateMetadata({ params })).toEqual({})
+    }
+  })
+
+  it('answers 404 on the checkout’s return path, without confirming anything', async () => {
+    shopOff()
+    const route = await import('@/app/(frontend)/[locale]/checkout/return/route')
+    const res = await route.GET(new Request('http://localhost/fr/checkout/return?payment_intent=pi_123'), { params: Promise.resolve({ locale: 'fr' }) })
+    expect(res.status).toBe(404)
+  })
+
   it('answers 404 for an unknown locale with the shop on too', async () => {
     process.env.LIGHT_CI_MODULES = 'shop'
     const route = await import('@/app/(frontend)/[locale]/shop/[slug]/page')

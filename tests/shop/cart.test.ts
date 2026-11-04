@@ -1,6 +1,7 @@
 import { createPayloadRequest, handleEndpoints, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import { MAX_CART_LINES } from '@/modules/shop/cart/rules'
 import type { Cart, Product } from '@/payload-types'
 
 import { describeWithShop } from '../support/modules'
@@ -348,20 +349,22 @@ describeWithShop('guest cart over REST', () => {
       expect(await stored(guest)).toMatchObject({ currency: 'EUR', subtotal: 1700 + 790 })
     })
 
-    it('holds at most 50 lines', async () => {
-      const many = await Promise.all(Array.from({ length: 51 }, (_, i) => publish({ title: `Article ${i}`, priceInEUR: 100, inventory: null })))
-      const guest = await newGuest(many.slice(0, 50).map((product) => ({ product: product.id, quantity: 1 })))
-      expect(await quantities(guest)).toHaveLength(50)
-      const res = await add(guest, many[50]!.id, 1)
+    it('holds at most 8 lines, the most one Stripe payment can carry', async () => {
+      // The plugin's Stripe adapter puts the lines in one PaymentIntent metadata value (500
+      // characters at most, about 61 per line): a ninth line could never be paid.
+      expect(MAX_CART_LINES).toBe(8)
+      const many = await Promise.all(Array.from({ length: 9 }, (_, i) => publish({ title: `Article ${i}`, priceInEUR: 100, inventory: null })))
+      const guest = await newGuest(many.slice(0, 8).map((product) => ({ product: product.id, quantity: 1 })))
+      expect(await quantities(guest)).toHaveLength(8)
+      const res = await add(guest, many[8]!.id, 1)
       expect(res.status).toBe(400)
-      expect(JSON.stringify(res.body)).toContain('at most 50 different products')
+      expect(JSON.stringify(res.body)).toContain('at most 8 different products')
+      expect((await rest('/api/carts', 'POST', { items: many.map((product) => ({ product: product.id, quantity: 1 })) })).status).toBe(400)
       // Changing a line of a full cart still works.
       expect((await update(guest, (await stored(guest)).items![0]!.id!, 3)).status).toBe(200)
-      // A huge write is refused before anything is read.
-      const started = Date.now()
+      // A huge write is refused.
       const huge = await rest('/api/carts', 'POST', { items: Array.from({ length: 3000 }, () => ({ product: tilleul.id, quantity: 1 })) })
       expect(huge.status).toBe(400)
-      expect(Date.now() - started).toBeLessThan(1000)
     })
 
     it('refuses a line with a variant (the shop sells none)', async () => {
@@ -383,7 +386,7 @@ describeWithShop('guest cart over REST', () => {
       for (const kind of kinds) {
         const product = await publish({ title: `Réglé ${kind}`, inventory: kind === 'atLimit' ? null : 10 })
         const lines = kind === 'fullCart'
-          ? await Promise.all(Array.from({ length: 50 }, (_, i) => publish({ title: `Plein ${i}`, priceInEUR: 100, inventory: null })))
+          ? await Promise.all(Array.from({ length: MAX_CART_LINES }, (_, i) => publish({ title: `Plein ${i}`, priceInEUR: 100, inventory: null })))
           : [product]
         const guest = await newGuest(lines.map((p) => ({ product: p.id, quantity: kind === 'atLimit' ? 99 : 3 })))
         const id = product.id

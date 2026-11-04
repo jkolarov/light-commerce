@@ -10,8 +10,12 @@ import { productPrice, type PriceFields } from '../products/price'
 /** The most of one product a cart may hold, whatever the stock. */
 export const MAX_LINE_QUANTITY = 99
 
-/** The most lines (different products) a cart may hold. */
-export const MAX_CART_LINES = 50
+/**
+ * The most lines (different products) a cart may hold: what one Stripe payment can carry. The
+ * plugin's Stripe adapter puts every line in one PaymentIntent metadata value, which holds 500
+ * characters, about 61 per line (payments/stripe/metadata.ts).
+ */
+export const MAX_CART_LINES = 8
 
 /** A product as the cart sees it: what a visitor may read of it. */
 export type CartProduct = PriceFields & { id: number | string; inventory?: number | null }
@@ -22,12 +26,15 @@ export type CartProduct = PriceFields & { id: number | string; inventory?: numbe
  * - `soldOut`: none left
  * - `notEnoughStock`: fewer left than the line asks for (`available` of them)
  * - `tooMany`: more than `MAX_LINE_QUANTITY` of one product (`max`)
+ * - `badQuantity`: the stored quantity is not a whole number of at least 1 (a write the cart's
+ *   rules refuse today, but a cart can still hold one)
  */
 export type LineProblem =
   | { kind: 'unavailable' }
   | { kind: 'soldOut' }
   | { kind: 'notEnoughStock'; available: number }
   | { kind: 'tooMany'; max: number }
+  | { kind: 'badQuantity' }
 
 type Currency = ShopConfig['currency']
 

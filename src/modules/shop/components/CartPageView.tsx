@@ -16,9 +16,10 @@ const HEADING_ID = 'cart-heading'
 /**
  * The cart page: the lines on the left, the summary (totals, checkout, back to the shop) on a
  * `surface` panel on the right that stays in view while the lines scroll. On phones the summary
- * follows the lines. An empty cart says so and points to the shop.
+ * follows the lines. An empty cart says so and points to the shop. `changed`: the checkout sent
+ * the visitor back, and the page says why first.
  */
-export function CartPageView({ cart, locale }: { cart: CartView | null; locale: Locale }) {
+export function CartPageView({ cart, locale, changed = false }: { cart: CartView | null; locale: Locale; changed?: boolean }) {
   const t = useTranslations('cart')
   const lines = cart && cart.lines.length > 0 ? cart : null
   return (
@@ -30,6 +31,12 @@ export function CartPageView({ cart, locale }: { cart: CartView | null; locale: 
         </Heading>
         {lines && <p className="text-muted">{t('itemCount', { count: lines.count })}</p>}
       </div>
+
+      {changed && (
+        <p role="status" className="mt-6 max-w-[68ch] border-l-[3px] border-primary bg-surface px-5 py-4 text-text">
+          {t('changedNotice')}
+        </p>
+      )}
 
       {lines ? (
         <div className="mt-8 grid gap-10 sm:mt-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:gap-16">
