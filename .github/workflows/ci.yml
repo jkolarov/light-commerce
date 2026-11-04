@@ -90,14 +90,33 @@ jobs:
           tags: light-commerce:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Smoke test (the container starts and answers /healthz)
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: schema
+          push: false
+          load: true
+          tags: light-commerce:ci-schema
+          cache-from: type=gha
+      - name: Smoke test (starts, answers /healthz, serves an uploaded photo)
         run: |
-          docker run -d --name smoke -p 3000:3000 -e PAYLOAD_SECRET=ci-placeholder-payload-secret -e SMTP_HOST=localhost -e SMTP_PORT=1025 light-commerce:ci
+          docker volume create smoke-data
+          docker run --rm -v smoke-data:/app/data -e PAYLOAD_SECRET=ci-placeholder-payload-secret light-commerce:ci-schema
+          docker run -d --name smoke -p 3000:3000 -v smoke-data:/app/data -e PAYLOAD_SECRET=ci-placeholder-payload-secret -e SMTP_HOST=localhost -e SMTP_PORT=1025 light-commerce:ci
+          ok=
           for i in $(seq 1 30); do
-            curl -fs http://127.0.0.1:3000/healthz && exit 0
+            curl -fs http://127.0.0.1:3000/healthz && ok=1 && break
             sleep 2
           done
-          docker logs smoke
-          exit 1
+          [ -n "$ok" ] || { docker logs smoke; exit 1; }
+          # Media: register the first user (the owner), upload a fixture, fetch it back. Guards the
+          # standalone trace (FLU-67): file serving needs modules the tracer used to leave out.
+          token=$(curl -fs -X POST http://127.0.0.1:3000/api/users/first-register -H 'content-type: application/json' \
+            -d '{"email":"ci@example.com","password":"ci-throwaway-password","name":"CI"}' | sed 's/.*"token":"\([^"]*\)".*/\1/')
+          curl -fs -X POST http://127.0.0.1:3000/api/media -H "Authorization: JWT $token" \
+            -F '_payload={"alt":"CI fixture"}' -F 'file=@tests/fixtures/small-300x200.png;type=image/png' >/dev/null || { docker logs smoke; exit 1; }
+          for f in small-300x200.png small-300x200-300x200.webp; do
+            curl -fs -o /dev/null http://127.0.0.1:3000/api/media/file/$f || { echo "media $f failed"; docker logs smoke; exit 1; }
+          done
       - if: always()
-        run: docker rm -f smoke
+        run: docker rm -f smoke || true; docker volume rm smoke-data || true
