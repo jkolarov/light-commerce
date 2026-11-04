@@ -1,10 +1,11 @@
-import type { Payload, PayloadRequest } from 'payload'
+import type { Payload, PayloadRequest, Where } from 'payload'
 
 import { isStaffOrOwner } from '@/core/access'
 import { locales, type Locale } from '@/core/i18n/locales'
 import type { Page } from '@/payload-types'
 
 import { pagePath } from '../fields/link'
+import { HOME_SLUG } from '../fields/slugs'
 
 export type PageLookup =
   | { kind: 'page'; page: Page }
@@ -23,50 +24,48 @@ export function canSeeDrafts(user: PayloadRequest['user'] | undefined): boolean 
   return isStaffOrOwner({ req: { user: user ?? null } as PayloadRequest })
 }
 
-async function findBySlug({ payload, user }: Pick<LookupArgs, 'payload' | 'user'>, slug: string, slugLocale: Locale, readLocale: Locale) {
+/**
+ * The page matching `where`, as this visitor may see it. Fields are read in `locale`; a missing
+ * translation falls back to the default language (`locales.default`, core config).
+ */
+async function findPage({ payload, user }: Pick<LookupArgs, 'payload' | 'user'>, where: Where, locale: Locale) {
   const result = await payload.find({
     collection: 'pages',
-    where: { slug: { equals: slug } },
-    locale: slugLocale,
-    // Fields are read in the page's language; a missing translation falls back to French (core config).
+    where,
+    locale,
     limit: 1,
     depth: 1,
     draft: canSeeDrafts(user),
     user,
     overrideAccess: false,
   })
-  const doc = result.docs[0]
-  if (!doc) return null
-  if (slugLocale === readLocale) return doc
-  // Found by its slug in another language: read it again in this one (fallback applies). It is
-  // not there when the page is not published in this language.
-  const again = await payload.find({
-    collection: 'pages',
-    where: { id: { equals: doc.id } },
-    locale: readLocale,
-    limit: 1,
-    depth: 1,
-    draft: canSeeDrafts(user),
-    user,
-    overrideAccess: false,
-  })
-  return again.docs[0] ?? null
+  return result.docs[0] ?? null
 }
 
 /**
  * Finds the page for `/<locale>/<slug>`. A slug that belongs to the page in another language
  * (`/en/a-propos`) answers with a redirect to this language's slug (`/en/about`), so the language
  * switch only has to swap the prefix. Unpublished pages are invisible to anonymous visitors.
+ *
+ * A page is published in every language at once (`publishInEveryLocale`), but "Unpublish in
+ * English" can still take it down in one language. Its address in another language, where the
+ * language switch leads, then redirects to this language's home page instead of a 404. Its own
+ * English address is a 404, and so is the home page itself.
+ * If this language's home page is unpublished too, the redirect lands on its 404: the home page
+ * never redirects to itself (an intentional loop guard).
  */
 export async function lookupPage(args: LookupArgs): Promise<PageLookup> {
   const { locale, slug } = args
-  const own = await findBySlug(args, slug, locale, locale)
+  const own = await findPage(args, { slug: { equals: slug } }, locale)
   if (own) return { kind: 'page', page: own }
 
   for (const other of locales) {
     if (other === locale) continue
-    const page = await findBySlug(args, slug, other, locale)
-    if (!page) continue
+    const there = await findPage(args, { slug: { equals: slug } }, other)
+    if (!there) continue
+    // Found by its slug in another language: read it again in this one (fallback applies).
+    const page = await findPage(args, { id: { equals: there.id } }, locale)
+    if (!page) return slug === HOME_SLUG ? { kind: 'notFound' } : { kind: 'redirect', to: pagePath(HOME_SLUG, locale) }
     // No translated slug: the French one is the fallback, and it is this address.
     if (page.slug === slug) return { kind: 'page', page }
     return { kind: 'redirect', to: pagePath(page.slug ?? slug, locale) }
@@ -76,8 +75,8 @@ export async function lookupPage(args: LookupArgs): Promise<PageLookup> {
 
 /**
  * The page's slug in the languages it can be reached in, for `hreflang` alternates. French fills
- * a missing translated slug. Visitors only get the languages the page is published in, because
- * the others answer 404; staff get every language.
+ * a missing translated slug. Visitors only get the languages the page is published in (every
+ * language, unless it was unpublished in one); staff get every language.
  */
 export async function pageSlugs(args: Pick<LookupArgs, 'payload' | 'user'> & { id: Page['id'] }) {
   const all = await args.payload.findByID({

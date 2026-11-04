@@ -2,7 +2,7 @@ import type { Locale } from '@/core/i18n/locales'
 
 /**
  * The languages a product is published in, from its `_status` read with `locale: 'all'` (one value
- * per language). Publishing always covers every language (S13's `publishInEveryLocale`), but a
+ * per language). Publishing always covers every language (core's `publishInEveryLocale`), but a
  * plain update that sets `_status: 'draft'` in one language unpublishes that one only, and its page
  * then answers 404 there.
  */

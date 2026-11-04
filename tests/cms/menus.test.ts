@@ -100,12 +100,16 @@ describeWithCms('header and footer menus', () => {
     expect(en).toContainEqual({ label: 'Public', href: '/en/public' })
   })
 
-  it('leaves out a page that is published in French but not in English', async () => {
+  it('links a page published from French in English too, and leaves it out of a language it was unpublished in', async () => {
     const frOnly = await page('Seul FR', 'seul-fr')
     await payload.updateGlobal({
       slug: 'footer', locale: 'fr', overrideAccess: true,
       data: { items: [{ link: { type: 'page', page: aboutId, label: 'À propos' } }, { link: { type: 'page', page: frOnly.id, label: 'Seul FR' } }] },
     })
+    expect((await nav.getFooterNav('fr')).map((i) => i.label)).toEqual(['À propos', 'Seul FR'])
+    expect((await nav.getFooterNav('en')).map((i) => i.href)).toEqual(['/en/about', '/en/seul-fr'])
+    // "Unpublish in English" (the admin sends `_status: 'draft'` for that language only).
+    await payload.update({ collection: 'pages', id: frOnly.id, data: { _status: 'draft' }, locale: 'en', overrideAccess: true })
     expect((await nav.getFooterNav('fr')).map((i) => i.label)).toEqual(['À propos', 'Seul FR'])
     expect((await nav.getFooterNav('en')).map((i) => i.href)).toEqual(['/en/about'])
   })

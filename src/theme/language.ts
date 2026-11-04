@@ -8,11 +8,16 @@ export const languageNames: Record<Locale, string> = { fr: 'Français', en: 'Eng
  * the query (`/fr/order/12?token=…` → `/en/order/12?token=…`). A path without a locale prefix goes
  * to the other language's home page.
  *
- * Limit: CMS page slugs differ per language (`/fr/a-propos`, `/en/about`). The page route answers
- * `/en/a-propos` with a redirect to `/en/about`, so swapping the prefix is enough. It lands on the
- * wrong page only when another page uses that same slug in the target language (a French `contact`
- * page whose English slug is `contact-us`, next to an English page whose slug is `contact`). To fix
- * that, a page would pass its own translated addresses (its `hreflang` alternates) to the switch.
+ * CMS pages: slugs differ per language (`/fr/a-propos`, `/en/about`). The page route answers
+ * `/en/a-propos` with a redirect to `/en/about`, so swapping the prefix is enough. Pages and
+ * products are published in every language at once; a page unpublished in one language ("Unpublish
+ * in English") answers its address there with a redirect to that language's home page, so the
+ * switch never leads to a 404 (`lookupPage` in src/modules/cms/pages/resolve.ts).
+ *
+ * Limit: it lands on the wrong page when another page uses that same slug in the target language (a
+ * French `contact` page whose English slug is `contact-us`, next to an English page whose slug is
+ * `contact`). To fix that, a page would pass its own translated addresses (its `hreflang`
+ * alternates) to the switch.
  *
  * Shop routes (`/shop/<product>`, cart, checkout, order) need nothing more: a product has one slug
  * shared by both languages (plan, "Collections, blocks, routes"), so the swapped address is right.
