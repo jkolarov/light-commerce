@@ -6,7 +6,8 @@ import type { Locale } from '@/core/i18n/locales'
 export type BlockComponents = Record<string, ComponentType<any>>
 
 export type RenderBlocksProps = {
-  // `unknown[]` while `cmsBlocks` is empty: Payload then types `layout` as unknown.
+  // Loosely typed on purpose: the shop adds its own blocks to `layout`, so each block's props are
+  // its component's business (see `BlockComponents`).
   blocks: ReadonlyArray<unknown> | null | undefined
   /** Block components keyed by block slug: `{ ...cmsBlockComponents, ...shop blockComponents }`. */
   components: BlockComponents

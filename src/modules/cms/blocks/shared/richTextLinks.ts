@@ -4,9 +4,10 @@ import type { LexicalLinkFields } from '@/payload-types'
 import { resolveLinkHref } from '../../fields/link'
 
 // Contact links are fine in running text ("écrivez-nous"), even though block buttons only take
-// site paths and http(s) URLs.
+// site paths and http(s) URLs. A phone number may have spaces, nothing else between its digits.
 const MAILTO = /^mailto:[^\s<>"'`]+$/i
-const TEL = /^tel:\+?[\d\s().-]+$/i
+const TEL = /^tel:\+?[\d ().-]+$/i
+const CONTROL = /[\u0000-\u001f\u007f]/
 
 /**
  * Where a link inside rich text goes, or `null` to show its words without a link. An internal
@@ -20,6 +21,6 @@ export function richTextLinkHref(fields: Partial<LexicalLinkFields> | null | und
     return resolveLinkHref({ type: 'page', page: fields.doc.value }, locale)
   }
   const url = typeof fields.url === 'string' ? fields.url.trim() : ''
-  if (MAILTO.test(url) || TEL.test(url)) return url
+  if (!CONTROL.test(url) && (MAILTO.test(url) || TEL.test(url))) return url
   return resolveLinkHref({ type: 'url', url }, locale)
 }

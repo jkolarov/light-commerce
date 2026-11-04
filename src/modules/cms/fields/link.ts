@@ -21,8 +21,13 @@ type PageLike = {
   slug?: string | Partial<Record<Locale, string | null>> | null
 }
 
+// ASCII whitespace and control characters (U+0000 to U+0020, U+007F). Browsers strip tab and
+// newline anywhere in a URL, so `/\t/host` would become `//host`. None of them belong in a link.
+const WHITESPACE_OR_CONTROL = /[\u0000- \u007f]/
+
 /** Site-relative path (`/fr/shop/x`) or absolute http(s) URL. Nothing else: no `javascript:`, no `//host`. */
 export function isValidLinkUrl(value: string): boolean {
+  if (WHITESPACE_OR_CONTROL.test(value)) return false
   // Browsers read `/\host` like `//host`, so a backslash after the first slash is out too.
   if (value.startsWith('/')) return !value.startsWith('//') && !value.startsWith('/\\')
   return /^https?:\/\/\S+$/i.test(value)

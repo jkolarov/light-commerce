@@ -82,6 +82,8 @@ describeWithCms('CMS block components', () => {
         { type: 'page', label: 'Voir', page: 42 },
         { type: 'page', label: 'Voir', page: null },
         { type: 'url', label: 'Voir', url: 'javascript:alert(1)' },
+        { type: 'url', label: 'Voir', url: '/\t/evil.test' },
+        { type: 'url', label: 'Voir', url: '/\n/evil.test' },
         { type: 'page', label: '', page: publishedPage('tisanes') as never },
         { type: 'page' },
       ]
@@ -114,6 +116,10 @@ describeWithCms('CMS block components', () => {
         urlLink('écrire', 'mailto:bonjour@lesclaies.example'),
         text(', '),
         urlLink('piège', 'javascript:alert(1)'),
+        text(', '),
+        urlLink('tabulation', '/\t/evil.test'),
+        text(', '),
+        urlLink('appel', 'tel:+33\t4 65 71 23 48'),
       ),
       quote(text('On attend que les bractées pâlissent.'), linebreak(), text('— Hélène')),
     )
@@ -140,11 +146,12 @@ describeWithCms('CMS block components', () => {
 
     it('keeps the words of a broken link but drops the link', () => {
       const html = renderToStaticMarkup(<RichText blockType="richText" content={content} locale="en" />)
-      for (const words of ['brouillon', 'pas chargé', 'piège']) {
+      for (const words of ['brouillon', 'pas chargé', 'piège', 'tabulation', 'appel']) {
         expect(html).toContain(`, ${words}`)
         expect(html).not.toContain(`>${words}</a>`)
       }
       expect(html).not.toContain('javascript:')
+      expect(html).not.toContain('evil.test')
       expect(html).not.toContain('href="#"')
       expect(count(html, /<a /)).toBe(4)
     })
