@@ -57,9 +57,14 @@ services:
     volumes:
       - data:/app/data
 
-  # Loads the demo company (`pnpm seed`, src/seed/) into the volume's database; pushes the schema
-  # first if it has none. demo/ is not in the image (.dockerignore): it is read from this checkout.
+  # Loads the demo company (`pnpm seed`, src/seed/) into the volume's database. demo/ is not in the
+  # image (.dockerignore): it is read from this checkout.
   #   docker compose -f compose.dev.yml run --rm seed            [--force]
+  # Like `schema`, it runs with NODE_ENV unset, so Payload first pushes the schema (in a terminal,
+  # Drizzle asks before a change that loses data) and marks the database as dev-pushed. Right until
+  # the baseline migration (S26). On a migrated database run it with NODE_ENV=production instead:
+  # Payload then applies pending migrations and never pushes. Otherwise the app's next start stops
+  # at the "you've run Payload in dev mode" warning instead of migrating.
   seed:
     profiles: [tools]
     image: ${APP_IMAGE:-light-commerce:dev}-schema
