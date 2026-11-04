@@ -96,6 +96,47 @@ describeWithShop('shop plugin', () => {
     expect(withWrongSecret.totalDocs).toBe(0)
   })
 
+  const restJSON = (url: string, method: string, body: unknown) =>
+    handleEndpoints({
+      config: payload.config,
+      path: new URL(url, 'http://localhost').pathname,
+      request: new Request(new URL(url, 'http://localhost'), {
+        method,
+        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    })
+
+  it('keeps a guest from setting who owns a cart or when it was bought', async () => {
+    const res = await restJSON('/api/carts', 'POST', {
+      items: [], currency: 'EUR', customer: staff.id, purchasedAt: new Date().toISOString(),
+    })
+    expect(res.status).toBe(201)
+    const { doc } = (await res.json()) as { doc: { id: number; customer?: unknown; purchasedAt?: unknown; secret?: unknown } }
+    expect(doc.customer ?? null).toBeNull()
+    expect(doc.purchasedAt ?? null).toBeNull()
+    expect(doc.secret).toEqual(expect.any(String))
+    const patch = await restJSON(`/api/carts/${doc.id}?secret=${String(doc.secret)}`, 'PATCH', { customer: staff.id, purchasedAt: new Date().toISOString() })
+    expect(patch.status).toBe(200)
+    const stored = await payload.findByID({ collection: 'carts', id: doc.id, overrideAccess: true })
+    expect([stored.customer ?? null, stored.purchasedAt ?? null]).toEqual([null, null])
+  })
+
+  it("still runs the plugin's guest cart flow: add an item with the cart's secret", async () => {
+    const product = await payload.create({
+      collection: 'products',
+      data: { title: 'Article', slug: 'article', priceInEUR: 790, inventory: 5, _status: 'published' },
+      overrideAccess: true,
+    })
+    const created = await restJSON('/api/carts', 'POST', { items: [], currency: 'EUR' })
+    const { doc: cart } = (await created.json()) as { doc: { id: number; secret: string } }
+    const added = await restJSON(`/api/carts/${cart.id}/add-item`, 'POST', { item: { product: product.id }, quantity: 2, secret: cart.secret })
+    expect(added.status).toBe(200)
+    const stored = await payload.findByID({ collection: 'carts', id: cart.id, overrideAccess: true })
+    expect(stored.items?.map((item) => item.quantity)).toEqual([2])
+    expect(stored.subtotal).toBe(1580)
+  })
+
   it('has no customer sign-up: a guest cannot create a user, over REST or the Local API', async () => {
     const res = await handleEndpoints({
       config: payload.config,

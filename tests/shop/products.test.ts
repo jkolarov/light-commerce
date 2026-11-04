@@ -97,6 +97,20 @@ describeWithShop('products', () => {
     expect((await publish({ title: 'Thé d’été !' })).slug).toBe('the-d-ete')
   })
 
+  it('publishes in every language at once, from a create or a one-language Publish', async () => {
+    const created = await payload.create({
+      collection: 'products', data: { title: 'Publié à la création', slug: 'publie-a-la-creation', _status: 'published' }, locale: 'fr', overrideAccess: false, user: asStaff(),
+    })
+    const draft = await payload.create({
+      collection: 'products', data: { title: 'Publié ensuite', slug: 'publie-ensuite', _status: 'draft' }, draft: true, locale: 'fr', overrideAccess: false, user: asStaff(),
+    })
+    await payload.update({ collection: 'products', id: draft.id, data: { _status: 'published' }, locale: 'fr', overrideAccess: false, user: asStaff() })
+    for (const id of [created.id, draft.id]) {
+      const en = await payload.find({ collection: 'products', where: { id: { equals: id } }, locale: 'en', overrideAccess: false })
+      expect(en.docs.map((doc) => doc.title), String(id)).toHaveLength(1)
+    }
+  })
+
   it('refuses a slug that another product already has', async () => {
     await publish({ title: 'Menthe poivrée' })
     await expect(publish({ title: 'Autre menthe', slug: 'menthe-poivree' })).rejects.toMatchObject({
@@ -194,6 +208,71 @@ describeWithShop('products', () => {
       await payload.restoreVersion({ collection: 'products', id: versions[0]!.id, overrideAccess: false, user: asStaff() })
       expect((await payload.findByID({ collection: 'products', id, locale: 'fr', overrideAccess: true })).title).toBe('Stock restauré')
       expect(await live(id)).toBe(16)
+    })
+
+    /**
+     * Runs `action` with a sale of `quantity` injected right before Payload writes the product's
+     * live row (the latest moment a concurrent sale can land). Returns the product writes seen.
+     */
+    const withSaleBeforeWrite = async (id: number, quantity: number, action: () => Promise<unknown>) => {
+      const db = payload.db as unknown as { updateOne: (args: Record<string, unknown>) => Promise<unknown> }
+      const updateOne = db.updateOne.bind(db)
+      const writes: string[][] = []
+      let sold = false
+      db.updateOne = async (args) => {
+        const data = (args.data ?? {}) as Record<string, unknown>
+        const isSale = typeof data.inventory === 'object' && data.inventory !== null
+        if (args.collection === 'products' && !isSale) {
+          writes.push(Object.keys(data))
+          if (!sold) {
+            sold = true
+            await updateOne({ collection: 'products', id, data: { inventory: { $inc: -quantity } } })
+          }
+        }
+        return updateOne(args)
+      }
+      try {
+        await action()
+      } finally {
+        db.updateOne = updateOne
+      }
+      expect(sold, 'the sale was injected').toBe(true)
+      return writes
+    }
+
+    it("keeps a sale that lands just before the admin's Publish writes the product", async () => {
+      const { id } = await publish({ title: 'Stock pendant la publication', inventory: 20 })
+      const loaded = await editView(id)
+      const writes = await withSaleBeforeWrite(id, 3, () => save(id, { ...loaded, title: 'Renommé', _status: 'published' }))
+      expect(await live(id)).toBe(17)
+      expect(writes.filter((keys) => keys.includes('inventory'))).toEqual([])
+    })
+
+    it('keeps a sale that lands just before server code saves a published product', async () => {
+      const { id } = await publish({ title: 'Stock pendant un script', inventory: 20 })
+      const writes = await withSaleBeforeWrite(id, 2, () =>
+        payload.update({ collection: 'products', id, data: { title: 'Script' }, locale: 'fr', overrideAccess: true }),
+      )
+      expect(await live(id)).toBe(18)
+      expect(writes.filter((keys) => keys.includes('inventory'))).toEqual([])
+    })
+
+    it('refuses bad stock or a bad price on a draft create, and stores nothing', async () => {
+      const before = await payload.count({ collection: 'products', overrideAccess: true })
+      for (const data of [{ inventory: -5 }, { inventory: 2.5 }, { priceInEUR: 12.5 }, { priceInEUR: -1 }]) {
+        await expect(
+          payload.create({ collection: 'products', data: { title: 'Brouillon invalide', ...data } as Product, draft: true, locale: 'fr', overrideAccess: false, user: asStaff() }),
+          JSON.stringify(data),
+        ).rejects.toMatchObject({ data: { errors: [{ path: Object.keys(data)[0] }] } })
+      }
+      expect(await payload.count({ collection: 'products', overrideAccess: true })).toEqual(before)
+    })
+
+    it('refuses a bad price on a draft update', async () => {
+      const { id } = await publish({ title: 'Prix brouillon', priceInEUR: 790 })
+      await expect(save(id, { ...(await editView(id)), priceInEUR: 12.5, _status: 'draft' }, true)).rejects.toMatchObject({
+        data: { errors: [{ path: 'priceInEUR', message: expect.stringMatching(/whole number of cents/) }] },
+      })
     })
 
     it('refuses a stock that is not a whole number, on a draft save too, and leaves the stock alone', async () => {

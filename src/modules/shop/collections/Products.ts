@@ -5,8 +5,9 @@ import { isStaffOrOwner, publishedOrStaff } from '@/core/access'
 import { forcePublishedForPublic, readVersions } from '@/core/access/drafts'
 
 import { shopGroup } from './admin'
-import { mapFields, requiredInDefaultLocale, slugify, wholeCents, wholeUnits } from './fields'
+import { CENTS_MESSAGE, mapFields, refuseUnlessWhole, requiredInDefaultLocale, slugify, wholeCents, wholeUnits } from './fields'
 import { applyStockChange, loadedInventoryField, rememberLoadedStock, showLiveStock, takeStockChange } from './liveStock'
+import { publishInEveryLocale } from './publishing'
 
 // Products: the plugin's collection (stock in `inventory`, price in `priceInEUR`, in cents) plus
 // the text and photos the shop shows. Name, summary, description and facts are per language,
@@ -78,7 +79,13 @@ const contentFields: Field[] = [
 const priceAndStock = (field: Field): Field => {
   if (field.type === 'checkbox' && /^priceIn[A-Z]{3}Enabled$/.test(field.name)) return { ...field, defaultValue: true }
   if (field.type !== 'number' || field.hasMany) return field
-  if (/^priceIn[A-Z]{3}$/.test(field.name)) return { ...field, validate: wholeCents }
+  if (/^priceIn[A-Z]{3}$/.test(field.name)) {
+    return {
+      ...field,
+      validate: wholeCents,
+      hooks: { ...field.hooks, beforeChange: [...(field.hooks?.beforeChange ?? []), refuseUnlessWhole(CENTS_MESSAGE)] },
+    }
+  }
   if (field.name === 'inventory') {
     return {
       ...field,
@@ -117,7 +124,12 @@ export const productsOverride: CollectionOverride = ({ defaultCollection }) => (
   },
   hooks: {
     ...defaultCollection.hooks,
-    beforeOperation: [...(defaultCollection.hooks?.beforeOperation ?? []), forcePublishedForPublic, hideTrashFromPublic],
+    beforeOperation: [
+      ...(defaultCollection.hooks?.beforeOperation ?? []),
+      forcePublishedForPublic,
+      hideTrashFromPublic,
+      publishInEveryLocale,
+    ],
     // Stock lives on the live product only (liveStock.ts).
     afterRead: [...(defaultCollection.hooks?.afterRead ?? []), rememberLoadedStock],
     afterChange: [...(defaultCollection.hooks?.afterChange ?? []), applyStockChange],
