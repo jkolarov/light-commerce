@@ -29,6 +29,7 @@ const contentFields: Field[] = [
     // when the product is created, then kept (Payload's slug field: unique, indexed, in the sidebar).
     name: 'slug',
     type: 'slug',
+    label: { en: 'Slug', fr: 'Adresse' },
     useAsSlug: 'title',
     slugify: ({ valueToSlugify }) => (typeof valueToSlugify === 'string' ? slugify(valueToSlugify) : undefined),
   },
@@ -78,6 +79,10 @@ const contentFields: Field[] = [
 
 /** The plugin's price and stock fields, held to whole numbers, with the price switched on by default. */
 const priceAndStock = (field: Field): Field => {
+  // The plugin's group around the prices describes itself in English only.
+  if (field.type === 'group' && !('name' in field) && typeof field.admin?.description === 'string') {
+    return { ...field, admin: { ...field.admin, description: { en: field.admin.description, fr: 'Les prix de ce produit.' } } }
+  }
   if (field.type === 'checkbox' && /^priceIn[A-Z]{3}Enabled$/.test(field.name)) return { ...field, defaultValue: true }
   if (field.type !== 'number' || field.hasMany) return field
   if (/^priceIn[A-Z]{3}$/.test(field.name)) {

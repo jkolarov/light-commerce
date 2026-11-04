@@ -14,6 +14,10 @@ export const MEDIA_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image
 
 export const Media: CollectionConfig = {
   slug: 'media',
+  labels: {
+    singular: { en: 'Media', fr: 'Média' },
+    plural: { en: 'Media', fr: 'Médias' },
+  },
   access: {
     read: anyone,
     create: isStaffOrOwner,
@@ -27,6 +31,13 @@ export const Media: CollectionConfig = {
     {
       name: 'alt',
       type: 'text',
+      label: { en: 'Alternative text', fr: 'Texte alternatif' },
+      admin: {
+        description: {
+          en: 'Describes the image for screen readers and search engines.',
+          fr: 'Décrit l’image pour les lecteurs d’écran et les moteurs de recherche.',
+        },
+      },
       localized: true,
       required: true,
     },

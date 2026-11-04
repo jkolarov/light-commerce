@@ -11,47 +11,57 @@ export const DEFAULT_COUNT = 4
 export const productGridBlock: Block = {
   slug: 'productGrid',
   interfaceName: 'ProductGridBlock',
-  labels: { singular: 'Product grid', plural: 'Product grids' },
+  labels: { singular: { en: 'Product grid', fr: 'Grille de produits' }, plural: { en: 'Product grids', fr: 'Grilles de produits' } },
   fields: [
     {
       name: 'heading',
       type: 'text',
+      label: { en: 'Heading', fr: 'Titre' },
       localized: true,
-      admin: { description: 'Optional. For example "Our best sellers".' },
+      admin: { description: { en: 'Optional. For example "Our best sellers".', fr: 'Facultatif. Par exemple « Nos meilleures ventes ».' } },
     },
     {
       name: 'mode',
       type: 'select',
+      label: { en: 'Mode', fr: 'Mode' },
       required: true,
       defaultValue: 'latest',
       options: [
-        { label: 'The latest products', value: 'latest' },
-        { label: 'Products I pick', value: 'selected' },
+        { label: { en: 'The latest products', fr: 'Les derniers produits' }, value: 'latest' },
+        { label: { en: 'Products I pick', fr: 'Produits que je choisis' }, value: 'selected' },
       ],
     },
     {
       name: 'count',
       type: 'number',
+      label: { en: 'Count', fr: 'Nombre' },
       min: MIN_PRODUCTS,
       max: MAX_PRODUCTS,
       defaultValue: DEFAULT_COUNT,
       required: true,
       admin: {
         step: 1,
-        description: `How many of the newest products to show (${MIN_PRODUCTS} to ${MAX_PRODUCTS}).`,
+        description: {
+          en: `How many of the newest products to show (${MIN_PRODUCTS} to ${MAX_PRODUCTS}).`,
+          fr: `Combien des derniers produits afficher (de ${MIN_PRODUCTS} à ${MAX_PRODUCTS}).`,
+        },
         condition: (_data, siblingData) => siblingData?.mode !== 'selected',
       },
     },
     {
       name: 'products',
       type: 'relationship',
+      label: { en: 'Products', fr: 'Produits' },
       relationTo: 'products',
       hasMany: true,
       required: true,
       minRows: 1,
       maxRows: MAX_PRODUCTS,
       admin: {
-        description: 'Shown in this order. Products that are not published are left out.',
+        description: {
+          en: 'Shown in this order. Products that are not published are left out.',
+          fr: 'Affichés dans cet ordre. Les produits non publiés sont ignorés.',
+        },
         condition: (_data, siblingData) => siblingData?.mode === 'selected',
       },
     },

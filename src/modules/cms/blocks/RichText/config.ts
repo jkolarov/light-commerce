@@ -6,6 +6,6 @@ import { blockRichTextField } from '../shared/richTextField'
 export const richTextBlock: Block = {
   slug: 'richText',
   interfaceName: 'RichTextBlock',
-  labels: { singular: 'Rich text', plural: 'Rich texts' },
+  labels: { singular: { en: 'Rich text', fr: 'Texte riche' }, plural: { en: 'Rich texts', fr: 'Textes riches' } },
   fields: [blockRichTextField('content')],
 }

@@ -30,6 +30,7 @@ import { StrikethroughFeatureClient as StrikethroughFeatureClient_e70f5e05f09f93
 import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { PriceCell as PriceCell_e27bf7b8cc50640dcdd584767b8eac3c } from '@payloadcms/plugin-ecommerce/client'
 import { PriceInput as PriceInput_b91672ccd6e8b071c11142ab941fedfb } from '@payloadcms/plugin-ecommerce/rsc'
+import { LinePrices as LinePrices_9c04ad95b36f3f6e11ff14f301751027 } from '../../../modules/shop/admin/LinePrices'
 import { AttentionCell as AttentionCell_b346f466749dcf61afbd4b40b1865482 } from '../../../modules/shop/admin/AttentionCell'
 import { FlaggedPayments as FlaggedPayments_8d4d0c7b6161c90a84f952ac372c1540 } from '../../../modules/shop/admin/FlaggedPayments'
 import { LLMInstructionsDescription as LLMInstructionsDescription_3817bf644402e67bfe6577f60ef982de } from '@payloadcms/ui'
@@ -79,6 +80,7 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#UnderlineFeatureClient": UnderlineFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/plugin-ecommerce/client#PriceCell": PriceCell_e27bf7b8cc50640dcdd584767b8eac3c,
   "@payloadcms/plugin-ecommerce/rsc#PriceInput": PriceInput_b91672ccd6e8b071c11142ab941fedfb,
+  "/modules/shop/admin/LinePrices#LinePrices": LinePrices_9c04ad95b36f3f6e11ff14f301751027,
   "/modules/shop/admin/AttentionCell#AttentionCell": AttentionCell_b346f466749dcf61afbd4b40b1865482,
   "/modules/shop/admin/FlaggedPayments#FlaggedPayments": FlaggedPayments_8d4d0c7b6161c90a84f952ac372c1540,
   "@payloadcms/ui#LLMInstructionsDescription": LLMInstructionsDescription_3817bf644402e67bfe6577f60ef982de,

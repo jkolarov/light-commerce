@@ -50,6 +50,7 @@ export function blockRichTextField(name = 'content'): RichTextField {
   return {
     name,
     type: 'richText',
+    label: { en: 'Content', fr: 'Contenu' },
     localized: true,
     editor: blockRichTextEditor,
     validate: richTextRequiredInDefaultLocale,

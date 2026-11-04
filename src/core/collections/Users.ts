@@ -69,6 +69,10 @@ const createUsers: Access = async ({ req }) => isOwner({ req }) || (await noUser
 
 export const Users: CollectionConfig = {
   slug: 'users',
+  labels: {
+    singular: { en: 'User', fr: 'Utilisateur' },
+    plural: { en: 'Users', fr: 'Utilisateurs' },
+  },
   admin: {
     useAsTitle: 'email',
   },
@@ -84,11 +88,12 @@ export const Users: CollectionConfig = {
     {
       name: 'roles',
       type: 'select',
+      label: { en: 'Roles', fr: 'Rôles' },
       hasMany: true,
       defaultValue: ['staff'],
       options: [
-        { label: 'Owner', value: 'owner' },
-        { label: 'Staff', value: 'staff' },
+        { label: { en: 'Owner', fr: 'Propriétaire' }, value: 'owner' },
+        { label: { en: 'Staff', fr: 'Équipe' }, value: 'staff' },
       ],
       saveToJWT: true,
       access: {
