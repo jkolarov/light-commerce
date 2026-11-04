@@ -130,6 +130,12 @@ describeWithShop('guest cart over REST', () => {
       expect((await stored(guest)).subtotal).toBe(1580)
     })
 
+    it("prices a cart created without a currency in the shop's currency", async () => {
+      const created = await rest('/api/carts', 'POST', { items: [{ product: tilleul.id, quantity: 2 }] })
+      expect(created.status).toBe(201)
+      expect(created.body.doc).toMatchObject({ currency: 'EUR', subtotal: 1700 })
+    })
+
     it('cannot change the secret of its cart', async () => {
       const guest = await newGuest()
       await rest(`/api/carts/${guest.id}?secret=${guest.secret}`, 'PATCH', { secret: 'chosen-by-the-guest' })
