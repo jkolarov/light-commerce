@@ -543,11 +543,12 @@ export interface Product {
       }[]
     | null;
   /**
-   * Units in stock now. Sales take from it; a new number takes effect when you publish.
+   * Units in stock now. Sales take from it. A new number applies at once, even on "Save draft".
    */
   inventory?: number | null;
   priceInEUREnabled?: boolean | null;
   priceInEUR?: number | null;
+  loadedInventory?: number | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -1003,6 +1004,7 @@ export interface ProductsSelect<T extends boolean = true> {
   inventory?: T;
   priceInEUREnabled?: T;
   priceInEUR?: T;
+  loadedInventory?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;

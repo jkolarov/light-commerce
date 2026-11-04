@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { handleEndpoints, type Payload } from 'payload'
-import { afterAll, beforeAll, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import type { Product, User } from '@/payload-types'
 
@@ -125,52 +125,101 @@ describeWithShop('products', () => {
     }
   })
 
-  it('never takes stock back from a saved version: sales since the last save are kept', async () => {
-    const product = await publish({ title: 'Stock vivant', inventory: 20 })
+  describe('stock', () => {
     // A sale: the plugin takes stock with a raw `$inc` on the live document, never on its versions.
-    const sell = (quantity: number) =>
-      payload.db.updateOne({ collection: 'products', id: product.id, data: { inventory: { $inc: -quantity } } as never })
-    const live = async () =>
-      ((await payload.db.findOne({ collection: 'products', where: { id: { equals: product.id } } })) as Product).inventory
-    const editView = () =>
-      payload.findByID({ collection: 'products', id: product.id, draft: true, locale: 'fr', overrideAccess: false, user: asStaff() })
-    const save = (data: Partial<Product>, draft = false) =>
-      payload.update({ collection: 'products', id: product.id, data, draft, locale: 'fr', overrideAccess: false, user: asStaff() })
+    const sell = (id: number, quantity: number) =>
+      payload.db.updateOne({ collection: 'products', id, data: { inventory: { $inc: -quantity } } as never })
+    const live = async (id: number) =>
+      ((await payload.db.findOne({ collection: 'products', where: { id: { equals: id } } })) as Product).inventory
+    /** What the admin's edit view loads: a staff draft read. */
+    const editView = (id: number) =>
+      payload.findByID({ collection: 'products', id, draft: true, locale: 'fr', overrideAccess: false, user: asStaff() })
+    /** What the admin's Save draft and Publish buttons send: the whole form. */
+    const save = (id: number, data: Partial<Product>, draft = false) =>
+      payload.update({ collection: 'products', id, data, draft, locale: 'fr', overrideAccess: false, user: asStaff() })
 
-    await sell(3)
-    // The admin's edit view and list show the live stock.
-    expect((await editView()).inventory).toBe(17)
-    const list = await payload.find({ collection: 'products', where: { id: { equals: product.id } }, draft: true, overrideAccess: false, user: asStaff() })
-    expect(list.docs[0]!.inventory).toBe(17)
-
-    // The owner fixes the name, sending back what the edit view showed, and publishes.
-    await save({ ...(await editView()), title: 'Stock vivant !', _status: 'published' })
-    expect(await live()).toBe(17)
-
-    // A draft, more sales, then a publish that does not send the stock (an API or script call).
-    await save({ title: 'Stock vivant (brouillon)', _status: 'draft' }, true)
-    await sell(2)
-    expect((await editView()).inventory).toBe(15)
-    await save({ _status: 'published' })
-    expect(await live()).toBe(15)
-
-    // A number the owner types is written as is.
-    await save({ inventory: 50, _status: 'published' })
-    expect(await live()).toBe(50)
-
-    // Server code without a user (seed, scripts) keeps the live stock too.
-    await sell(1)
-    await payload.update({ collection: 'products', id: product.id, data: { title: 'Par script', _status: 'published' }, locale: 'fr', overrideAccess: true })
-    expect(await live()).toBe(49)
-
-    // Restoring an old version brings back its text, not its stock.
-    const { docs: versions } = await payload.findVersions({
-      collection: 'products', where: { parent: { equals: product.id } }, sort: 'createdAt', limit: 1, overrideAccess: true,
+    it('shows the live stock in the admin, never the stock of a saved version', async () => {
+      const { id } = await publish({ title: 'Stock lu', inventory: 20 })
+      await save(id, { title: 'Stock lu (brouillon)', _status: 'draft' }, true)
+      await sell(id, 3)
+      expect((await editView(id)).inventory).toBe(17)
+      const list = await payload.find({ collection: 'products', where: { id: { equals: id } }, draft: true, overrideAccess: false, user: asStaff() })
+      expect(list.docs[0]!.inventory).toBe(17)
     })
-    await sell(4)
-    await payload.restoreVersion({ collection: 'products', id: versions[0]!.id, overrideAccess: false, user: asStaff() })
-    expect((await payload.findByID({ collection: 'products', id: product.id, locale: 'fr', overrideAccess: true })).title).toBe('Stock vivant')
-    expect(await live()).toBe(45)
+
+    it('applies a stock change at once on a draft save', async () => {
+      const { id } = await publish({ title: 'Stock brouillon', inventory: 20 })
+      await save(id, { ...(await editView(id)), inventory: 35, title: 'Pas encore publié', _status: 'draft' }, true)
+      expect(await live(id)).toBe(35)
+      // The text stays a draft: visitors still see the published name, with the new stock.
+      const forVisitors = await payload.findByID({ collection: 'products', id, locale: 'fr', overrideAccess: false })
+      expect([forVisitors.title, forVisitors.inventory]).toEqual(['Stock brouillon', 35])
+    })
+
+    it('never writes back stock it did not change: a sale between opening and saving is kept', async () => {
+      const { id } = await publish({ title: 'Stock concurrent', inventory: 20 })
+      for (const draft of [true, false]) {
+        const loaded = await editView(id)
+        await sell(id, 2)
+        await save(id, { ...loaded, title: `Nom ${draft ? 'brouillon' : 'publié'}`, _status: draft ? 'draft' : 'published' }, draft)
+        expect(await live(id), draft ? 'draft save' : 'publish').toBe(loaded.inventory! - 2)
+      }
+      expect(await live(id)).toBe(16)
+    })
+
+    it("lets staff's explicit number win over a sale made while they edited", async () => {
+      const { id } = await publish({ title: 'Stock imposé', inventory: 20 })
+      const loaded = await editView(id)
+      await sell(id, 2)
+      await save(id, { ...loaded, inventory: 50, _status: 'published' })
+      expect(await live(id)).toBe(50)
+    })
+
+    it('writes stock that server code sends, keeps it when server code does not send it', async () => {
+      const { id } = await publish({ title: 'Stock script', inventory: 20 })
+      await sell(id, 1)
+      await payload.update({ collection: 'products', id, data: { title: 'Par script', _status: 'published' }, locale: 'fr', overrideAccess: true })
+      expect(await live(id)).toBe(19)
+      await payload.update({ collection: 'products', id, data: { inventory: 40 }, draft: true, locale: 'fr', overrideAccess: true })
+      expect(await live(id)).toBe(40)
+    })
+
+    it('does not touch stock when an old version is restored', async () => {
+      const { id } = await publish({ title: 'Stock restauré', inventory: 20 })
+      await save(id, { ...(await editView(id)), title: 'Nouveau nom', _status: 'published' })
+      await sell(id, 4)
+      const { docs: versions } = await payload.findVersions({
+        collection: 'products', where: { parent: { equals: id } }, sort: 'createdAt', limit: 1, overrideAccess: true,
+      })
+      await payload.restoreVersion({ collection: 'products', id: versions[0]!.id, overrideAccess: false, user: asStaff() })
+      expect((await payload.findByID({ collection: 'products', id, locale: 'fr', overrideAccess: true })).title).toBe('Stock restauré')
+      expect(await live(id)).toBe(16)
+    })
+
+    it('refuses a stock that is not a whole number, on a draft save too, and leaves the stock alone', async () => {
+      const { id } = await publish({ title: 'Stock invalide', inventory: 20 })
+      for (const draft of [true, false]) {
+        await expect(save(id, { ...(await editView(id)), inventory: 2.5, _status: draft ? 'draft' : 'published' }, draft)).rejects.toMatchObject({
+          data: { errors: [{ path: 'inventory', message: expect.stringMatching(/whole number of units/) }] },
+        })
+      }
+      expect(await live(id)).toBe(20)
+    })
+
+    it('changes no stock when the rest of the save fails', async () => {
+      const { id } = await publish({ title: 'Stock et prix', inventory: 20 })
+      await expect(save(id, { ...(await editView(id)), inventory: 30, priceInEUR: 12.5, _status: 'published' })).rejects.toThrow()
+      expect(await live(id)).toBe(20)
+    })
+
+    it('keeps the loaded stock away from visitors and out of the database', async () => {
+      const { id } = await publish({ title: 'Stock privé', inventory: 20 })
+      expect((await editView(id)).loadedInventory).toBe(20)
+      const forVisitors = await payload.findByID({ collection: 'products', id, locale: 'fr', overrideAccess: false })
+      expect(forVisitors).not.toHaveProperty('loadedInventory')
+      const row = (await payload.db.findOne({ collection: 'products', where: { id: { equals: id } } })) as Record<string, unknown>
+      expect(row).not.toHaveProperty('loadedInventory')
+    })
   })
 
   it('takes its photos from media', async () => {

@@ -1,18 +1,28 @@
-import type { FieldHook, PayloadRequest } from 'payload'
+import { ValidationError } from 'payload'
+import type { CollectionAfterChangeHook, CollectionAfterReadHook, Field, FieldHook, PayloadRequest } from 'payload'
 
 import { isStaffOrOwner } from '@/core/access'
 
-// Stock is never read from, or written back from, a saved version of a product.
+// Stock is operational data, not editorial content: it lives on the live product only, and drafts
+// and versions never hold it.
 //
-// Why: the ecommerce plugin takes stock on a sale with a raw `$inc` on the live document, which
-// leaves the product's versions alone. With drafts on, Payload 4 reads the admin's edit view and
-// list (`draft: true`), and the document every update starts from, out of the latest version. So
-// the admin would show the stock as it was at the last save, and saving the product for any
-// reason would write that old number back over every sale since.
-//
-// What it means for the owner: a stock number takes effect when the product is published. A
-// draft does not keep a stock change; the next time the product opens it shows the live stock.
-// Restoring an old version brings back its text and price, not its stock.
+// - Reads: stock always comes from the live document. The ecommerce plugin takes stock on a sale
+//   with a raw `$inc` on the live document only, while Payload 4 reads the admin's edit view and
+//   list (`draft: true`), and the document every update starts from, out of the latest version.
+// - Writes: Payload never writes the stock column when a product is updated. A save that changes
+//   the stock writes that one field on the live document, at once, on any save (draft or publish),
+//   after the save went through. A save that does not change it writes nothing, so sales made
+//   meanwhile are never overwritten. Restoring an old version never touches stock.
+// - "Changes the stock" means: the number sent differs from the one the editor loaded. The admin
+//   sends that back in the hidden `loadedInventory` field. Server code that does not send it is
+//   compared with the stock at the start of the save, so not sending `inventory` changes nothing.
+// - If a sale happens between opening the product and saving a new number, the editor's explicit
+//   number wins: it is a stock count, so it replaces the live value (no transaction, no merge).
+
+/** `req.context` key: product id → new stock, from `takeStockChange` to `applyStockChange`. */
+const STOCK_CHANGES = 'shop:stockChanges'
+
+type StockChanges = Record<string, number | null>
 
 /** The stock on the live document, which is what sales change. */
 async function liveInventory(req: PayloadRequest, id: number | string): Promise<number | null | undefined> {
@@ -27,9 +37,8 @@ async function liveInventory(req: PayloadRequest, id: number | string): Promise<
 
 /**
  * `afterRead` on `inventory`: shows the live stock to the admin (staff and owners) and to server
- * code (`overrideAccess`, which is also how an update reads the document it starts from, so an
- * update that does not send the stock keeps the live one; a number it sends wins). Public reads
- * never get drafts, so they already read the live document and skip the extra query.
+ * code (`overrideAccess`, which is also how an update reads the document it starts from). Public
+ * reads never get drafts, so they already read the live document and skip the extra query.
  *
  * It never throws: it also runs while the plugin settles a payment (the new order's products are
  * read back), where an error would leave the transaction stuck (plan, "Orders").
@@ -46,13 +55,53 @@ export const showLiveStock: FieldHook = async ({ value, data, overrideAccess, re
   }
 }
 
+/** The stock the editor loaded, sent back by the admin with the form. Never stored, staff only. */
+export const loadedInventoryField: Field = {
+  name: 'loadedInventory',
+  type: 'number',
+  virtual: true,
+  admin: { hidden: true },
+}
+
+/** `afterRead` on the collection: what the admin loads includes the stock it showed. */
+export const rememberLoadedStock: CollectionAfterReadHook = ({ doc, req }) =>
+  isStaffOrOwner({ req }) ? { ...doc, loadedInventory: doc.inventory } : doc
+
+const isStock = (value: unknown): value is number | null =>
+  value === null || (typeof value === 'number' && Number.isInteger(value) && value >= 0)
+
 /**
- * `beforeChange` on `inventory`: restoring an old version brings back its text and price, not its
- * stock. (A restore writes the version's own data, which never went through `showLiveStock`.)
+ * `beforeChange` on `inventory`, for updates: takes the stock out of what Payload writes, and
+ * keeps a change for `applyStockChange`. Creating a product writes its first stock as usual.
  */
-export const keepLiveStockOnRestore: FieldHook = async ({ value, data, originalDoc, req }) => {
-  const id = (originalDoc as { id?: number | string } | undefined)?.id ?? (data as { id?: number | string } | undefined)?.id
-  if (!req.context?.isRestoringVersion || id === undefined) return value
-  const live = await liveInventory(req, id)
-  return live === undefined ? value : live
+export const takeStockChange: FieldHook = ({ value, previousValue, siblingData, originalDoc, operation, req }) => {
+  if (operation !== 'update') return value
+  const id = (originalDoc as { id?: number | string } | undefined)?.id
+  // Drizzle skips undefined columns, so the update leaves the live stock alone.
+  delete siblingData.inventory
+  if (id === undefined) return undefined
+  const changes = ((req.context[STOCK_CHANGES] as StockChanges | undefined) ??= {})
+  delete changes[String(id)]
+  const loaded = 'loadedInventory' in siblingData ? siblingData.loadedInventory : previousValue
+  if (req.context.isRestoringVersion || value === undefined || value === loaded) return undefined
+  // Checked here because draft saves skip validation, and the change applies to the live stock.
+  if (!isStock(value)) {
+    throw new ValidationError(
+      { errors: [{ path: 'inventory', message: 'Expected a whole number of units, 0 or more.' }] },
+      req.t,
+    )
+  }
+  changes[String(id)] = value
+  return undefined
+}
+
+/** `afterChange` on the collection: writes a stock change, and only the stock, once the save went through. */
+export const applyStockChange: CollectionAfterChangeHook = async ({ doc, req }) => {
+  const changes = req.context[STOCK_CHANGES] as StockChanges | undefined
+  const key = String(doc.id)
+  if (!changes || !(key in changes)) return doc
+  const inventory = changes[key]
+  delete changes[key]
+  await req.payload.db.updateOne({ collection: 'products', id: doc.id, data: { inventory }, req })
+  return 'loadedInventory' in doc ? { ...doc, inventory, loadedInventory: inventory } : { ...doc, inventory }
 }

@@ -6,7 +6,7 @@ import { forcePublishedForPublic, readVersions } from '@/core/access/drafts'
 
 import { shopGroup } from './admin'
 import { mapFields, requiredInDefaultLocale, slugify, wholeCents, wholeUnits } from './fields'
-import { keepLiveStockOnRestore, showLiveStock } from './liveStock'
+import { applyStockChange, loadedInventoryField, rememberLoadedStock, showLiveStock, takeStockChange } from './liveStock'
 
 // Products: the plugin's collection (stock in `inventory`, price in `priceInEUR`, in cents) plus
 // the text and photos the shop shows. Name, summary, description and facts are per language,
@@ -86,13 +86,13 @@ const priceAndStock = (field: Field): Field => {
       hooks: {
         ...field.hooks,
         afterRead: [...(field.hooks?.afterRead ?? []), showLiveStock],
-        beforeChange: [...(field.hooks?.beforeChange ?? []), keepLiveStockOnRestore],
+        beforeChange: [...(field.hooks?.beforeChange ?? []), takeStockChange],
       },
       admin: {
         ...field.admin,
         description: {
-          en: 'Units in stock now. Sales take from it; a new number takes effect when you publish.',
-          fr: 'Unités en stock. Chaque vente en retire ; un nouveau nombre s’applique à la publication.',
+          en: 'Units in stock now. Sales take from it. A new number applies at once, even on "Save draft".',
+          fr: 'Unités en stock. Chaque vente en retire. Un nouveau nombre s’applique tout de suite, même en brouillon.',
         },
       },
     }
@@ -118,8 +118,11 @@ export const productsOverride: CollectionOverride = ({ defaultCollection }) => (
   hooks: {
     ...defaultCollection.hooks,
     beforeOperation: [...(defaultCollection.hooks?.beforeOperation ?? []), forcePublishedForPublic, hideTrashFromPublic],
+    // Stock lives on the live product only (liveStock.ts).
+    afterRead: [...(defaultCollection.hooks?.afterRead ?? []), rememberLoadedStock],
+    afterChange: [...(defaultCollection.hooks?.afterChange ?? []), applyStockChange],
   },
   // Drafts without autosave, like pages: a draft is saved only when someone clicks "Save draft".
   versions: { drafts: true },
-  fields: [...contentFields, ...mapFields(defaultCollection.fields, priceAndStock)],
+  fields: [...contentFields, ...mapFields(defaultCollection.fields, priceAndStock), loadedInventoryField],
 })
