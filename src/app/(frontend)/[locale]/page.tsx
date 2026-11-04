@@ -1,28 +1,31 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
-import { isLocale, type Locale } from '@/core/i18n/locales'
+import { getLightConfig } from '@/config'
+import { isLocale } from '@/core/i18n/locales'
+import { cmsBlockComponents } from '@/modules/cms/blocks'
+import { CmsPage, cmsPageMetadata } from '@/modules/cms/pages/route'
+import { blockComponents as shopBlockComponents, ProductList } from '@/modules/shop/frontend'
 
-import en from '../../../../messages/en.json'
-import fr from '../../../../messages/fr.json'
-
-// Placeholder home page. S09 replaces it with the CMS `home` page, or the shop's product list
-// when the CMS is off.
-
-const messages: Record<Locale, typeof fr> = { fr, en }
+// Home: the CMS page with slug `home`, or the shop's product list when the CMS is off.
 
 type Props = {
   params: Promise<{ locale: string }>
 }
 
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params
+  if (!isLocale(locale) || !getLightConfig().modules.cms) return {}
+  return cmsPageMetadata(locale, 'home')
+}
+
 export default async function HomePage({ params }: Props) {
   const { locale } = await params
   if (!isLocale(locale)) notFound()
-  const t = messages[locale].placeholder
+  const { modules } = getLightConfig()
 
-  return (
-    <main className="mx-auto max-w-2xl px-6 py-24">
-      <h1 className="text-3xl text-primary">{t.title}</h1>
-      <p className="mt-4 text-muted">{t.body}</p>
-    </main>
-  )
+  if (!modules.cms) return modules.shop ? <ProductList locale={locale} /> : notFound()
+
+  const components = { ...cmsBlockComponents, ...(modules.shop ? shopBlockComponents : {}) }
+  return <CmsPage locale={locale} slug="home" components={components} />
 }
