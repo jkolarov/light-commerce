@@ -10,7 +10,7 @@ import type { Locale } from '@/core/i18n/locales'
 import { asMedia, shareImage } from '@/theme/media'
 
 import { ProductDetails } from '../components/ProductDetails'
-import { findPublishedProduct } from './load'
+import { findPublishedLocales, findPublishedProduct } from './load'
 import { productPath, shopPath } from './paths'
 
 // The shop's routes. `src/app/(frontend)/[locale]/shop/page.tsx` and `shop/[slug]/page.tsx` are
@@ -32,21 +32,25 @@ function absolute(path: string): string {
   return new URL(path, getLightConfig().site.url).toString()
 }
 
-/** The page's address in this language (canonical) and in every language (`hreflang`). */
-function alternates(locale: Locale, path: (locale: Locale) => string) {
-  const languages = Object.fromEntries(getLightConfig().locales.available.map((l) => [l, absolute(path(l))]))
+/** The page's address in this language (canonical) and in each of `locales` (`hreflang`). */
+function alternates(locale: Locale, path: (locale: Locale) => string, locales: readonly Locale[] = getLightConfig().locales.available) {
+  const languages = Object.fromEntries(locales.map((l) => [l, absolute(path(l))]))
   return { canonical: absolute(path(locale)), languages }
 }
 
-/** Title (the name), description (the summary), share image (`og`) and `hreflang` alternates. */
+/**
+ * Title (the name), description (the summary), share image (`og`) and `hreflang` alternates for
+ * the languages the product is published in.
+ */
 export async function productMetadata(locale: Locale, slug: string): Promise<Metadata> {
   const product = await loadProduct(locale, slug)
   if (!product) return {}
+  const locales = await findPublishedLocales(await getPayload({ config }), product.id, getLightConfig().locales.available)
   const title = product.title?.trim() || undefined
   const description = product.summary?.trim() || undefined
   const photo = asMedia(product.images?.[0])
   const image = photo ? shareImage(photo) : undefined
-  const links = alternates(locale, (l) => productPath(l, product.slug))
+  const links = alternates(locale, (l) => productPath(l, product.slug), locales)
   return {
     title,
     description,

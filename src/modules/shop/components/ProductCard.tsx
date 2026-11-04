@@ -30,6 +30,9 @@ const sizes = '(min-width: 76rem) 19rem, (min-width: 64rem) 27vw, 40vw'
  * One product in a grid: its first photo on a `surface` tile, the name in the heading font (the
  * link to the product page; the whole card is clickable), the one-line summary and the price, plus
  * "Épuisé" when the stock is 0. The shop page lists these, and so does the CMS's product grid block.
+ *
+ * A list of cards keys each one on the product's `id` (as `ProductGrid` does), so a query that
+ * narrows its fields with `select` must keep `id` too.
  */
 export function ProductCard({ product, locale, headingLevel = 2 }: ProductCardProps) {
   const t = useTranslations('shop')

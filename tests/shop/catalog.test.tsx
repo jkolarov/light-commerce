@@ -261,4 +261,41 @@ describeWithShop('shop pages', () => {
       expect(urls.some((u) => u.includes('pas-encore') || u.includes('ancienne-tisane'))).toBe(false)
     })
   })
+
+  describe('a product published in one language only', () => {
+    // S13's hook publishes every language at once, but a plain update that sets `_status: 'draft'`
+    // in one language (an unpublish, not a draft save) leaves the product published in the others.
+    // Runs last: the lists above don't expect this product.
+    beforeAll(async () => {
+      const product = await publish({ title: 'Seul en français', slug: 'seul-en-francais' })
+      await payload.update({ collection: 'products', id: product.id, data: { _status: 'draft' }, locale: 'en', overrideAccess: true })
+    })
+
+    it('is a page in that language and a 404 in the other', async () => {
+      const { findPublishedProduct, findPublishedProducts } = await load()
+      expect((await findPublishedProduct(payload, 'fr', 'seul-en-francais'))?.title).toBe('Seul en français')
+      expect(await findPublishedProduct(payload, 'en', 'seul-en-francais')).toBeNull()
+      expect((await findPublishedProducts(payload, 'fr')).map((p) => p.slug)).toContain('seul-en-francais')
+      expect((await findPublishedProducts(payload, 'en')).map((p) => p.slug)).not.toContain('seul-en-francais')
+    })
+
+    it('is in the sitemap for that language only', async () => {
+      const { productSitemapEntries } = await import('@/modules/shop/products/sitemap')
+      const entries = await productSitemapEntries(payload, 'https://example.com', ['fr', 'en'])
+      const urls = entries.map((e) => e.url)
+      expect(urls).toContain('https://example.com/fr/shop/seul-en-francais')
+      expect(urls).not.toContain('https://example.com/en/shop/seul-en-francais')
+      const entry = entries.find((e) => e.url === 'https://example.com/fr/shop/seul-en-francais')
+      expect(entry?.alternates?.languages).toEqual({ fr: 'https://example.com/fr/shop/seul-en-francais' })
+    })
+
+    it('lists only that language in its hreflang alternates', async () => {
+      const { generateMetadata } = await import('@/app/(frontend)/[locale]/shop/[slug]/page')
+      const meta = await generateMetadata({ params: Promise.resolve({ locale: 'fr', slug: 'seul-en-francais' }) })
+      expect(meta.alternates).toEqual({
+        canonical: `${SITE}/fr/shop/seul-en-francais`,
+        languages: { fr: `${SITE}/fr/shop/seul-en-francais` },
+      })
+    })
+  })
 })

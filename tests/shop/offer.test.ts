@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { publishedLocales } from '@/modules/shop/products/locales'
 import { productPath, shopPath } from '@/modules/shop/products/paths'
 import { formatTaxRate, productPrice } from '@/modules/shop/products/price'
 import { LOW_STOCK_THRESHOLD, stockState } from '@/modules/shop/products/stock'
@@ -47,6 +48,20 @@ describeWithShop('product offer', () => {
       expect(formatTaxRate(5.5, 'en')).toBe('5.5')
       expect(formatTaxRate(20, 'fr')).toBe('20')
       expect(formatTaxRate(2.1, 'en')).toBe('2.1')
+    })
+  })
+
+  describe('publishedLocales', () => {
+    it('reads one status per language, or one for all', () => {
+      expect(publishedLocales({ fr: 'published', en: 'published' }, ['fr', 'en'])).toEqual(['fr', 'en'])
+      expect(publishedLocales({ fr: 'published', en: 'draft' }, ['fr', 'en'])).toEqual(['fr'])
+      expect(publishedLocales('published', ['fr', 'en'])).toEqual(['fr', 'en'])
+      expect(publishedLocales('draft', ['fr', 'en'])).toEqual([])
+      expect(publishedLocales(undefined, ['fr', 'en'])).toEqual([])
+    })
+
+    it('keeps only the languages the site offers', () => {
+      expect(publishedLocales({ fr: 'published', en: 'published' }, ['fr'])).toEqual(['fr'])
     })
   })
 

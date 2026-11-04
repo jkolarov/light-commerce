@@ -3,6 +3,8 @@ import type { Payload } from 'payload'
 import type { Locale } from '@/core/i18n/locales'
 import type { Product } from '@/payload-types'
 
+import { publishedLocales } from './locales'
+
 // What the shop's public pages read. Always as an anonymous visitor (`overrideAccess: false`, no
 // user) and never drafts (`draft: false`): a product that is not published, or is in the trash, is
 // simply not there, for staff too. The core's draft guard (`forcePublishedForPublic`) holds the
@@ -40,4 +42,20 @@ export async function findPublishedProduct(payload: Payload, locale: Locale, slu
     overrideAccess: false,
   })
   return docs[0] ?? null
+}
+
+/** The languages the product is published in, of those the site offers (for `hreflang`). */
+export async function findPublishedLocales(payload: Payload, id: Product['id'], available: readonly Locale[]): Promise<Locale[]> {
+  const { docs } = await payload.find({
+    collection: 'products',
+    where: { id: { equals: id } },
+    locale: 'all',
+    depth: 0,
+    limit: 1,
+    pagination: false,
+    select: { _status: true },
+    draft: false,
+    overrideAccess: false,
+  })
+  return docs[0] ? publishedLocales(docs[0]._status, available) : []
 }

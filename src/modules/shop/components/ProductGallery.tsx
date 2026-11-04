@@ -43,7 +43,8 @@ export function ProductGallery({ photos }: { photos: GalleryPhoto[] }) {
       {photos.length > 1 && (
         <ul aria-label={t('photos')} className="mt-3 flex flex-wrap gap-3">
           {photos.map((photo, index) => (
-            <li key={photo.image.src}>
+            // The same photo may be attached twice: the position is what tells them apart.
+            <li key={index}>
               <button
                 type="button"
                 aria-label={t('showPhoto', { index: index + 1, count: photos.length })}
@@ -55,7 +56,7 @@ export function ProductGallery({ photos }: { photos: GalleryPhoto[] }) {
                   focusRing,
                 )}
               >
-                <PhotoTile>
+                <PhotoTile as="span">
                   {/* eslint-disable-next-line @next/next/no-img-element -- the button's label names the photo */}
                   <img {...photo.thumbnail} alt="" loading="lazy" decoding="async" className={tilePhoto} />
                 </PhotoTile>

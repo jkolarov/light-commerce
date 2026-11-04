@@ -150,6 +150,14 @@ describeWithShop('product views', () => {
       expect(html).toContain('aria-label="Photos du produit"')
     })
 
+    it('keeps only phrasing content in the thumbnail buttons, one per photo even when a photo is attached twice', () => {
+      const photo = squarePhoto('menthe', 'Feuilles de menthe séchées')
+      const html = render(<ProductDetails product={product({ images: [photo, photo] })} locale="fr" />)
+      const buttons = html.match(/<button[\s\S]*?<\/button>/g) ?? []
+      expect(buttons).toHaveLength(2)
+      for (const button of buttons) expect(button).not.toMatch(/<div/)
+    })
+
     it('keeps the words of links it cannot follow, and the links it can', () => {
       const description = richText(
         heading('h1', 'Le goût'),
