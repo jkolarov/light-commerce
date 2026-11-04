@@ -29,8 +29,8 @@ export const Pages: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug', '_status', 'updatedAt'],
     description: {
-      en: 'Publish puts the page online in every language at once. Text not yet translated shows in the default language.',
-      fr: 'Publier met la page en ligne dans toutes les langues à la fois. Un texte pas encore traduit s’affiche dans la langue par défaut.',
+      en: 'Publish puts the page online in every language at once. Text not yet translated shows in the default language. Publishing also puts online the last saved text of every other language, drafts included: finish or discard a translation draft before you publish.',
+      fr: 'Publier met la page en ligne dans toutes les langues à la fois. Un texte pas encore traduit s’affiche dans la langue par défaut. Publier met aussi en ligne le dernier texte enregistré des autres langues, brouillons compris : terminez ou supprimez une traduction en cours avant de publier.',
     },
   },
   versions: { drafts: true },

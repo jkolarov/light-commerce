@@ -22,7 +22,7 @@ One Next.js app with [Payload CMS 4](https://payloadcms.com) inside it, SQLite b
 
 Use the CMS alone, the shop alone, or both.
 
-Content is in French and English. Publishing a page or a product publishes it in every language at once; text not translated yet shows in the default language (French). "Unpublish in English" in the admin takes one language offline until the next publish.
+Content is localized: each language in `locales` (`light.config.ts`) has its own text. Publishing a page or a product publishes it in every language at once; text not translated yet shows in the default language (`locales.default`). Publishing also puts online the last saved text of every other language, drafts included: finish or discard a translation draft before you publish. "Unpublish in English" in the admin takes one language offline until the next publish.
 
 Later phases: outgoing webhooks, an MCP server, an embeddable buy button, redirects import, blog, more shipping and payment options, and embedding the booking platform's widgets.
 

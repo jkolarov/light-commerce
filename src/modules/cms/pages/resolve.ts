@@ -26,7 +26,7 @@ export function canSeeDrafts(user: PayloadRequest['user'] | undefined): boolean 
 
 /**
  * The page matching `where`, as this visitor may see it. Fields are read in `locale`; a missing
- * translation falls back to French (core config).
+ * translation falls back to the default language (`locales.default`, core config).
  */
 async function findPage({ payload, user }: Pick<LookupArgs, 'payload' | 'user'>, where: Where, locale: Locale) {
   const result = await payload.find({
@@ -51,6 +51,8 @@ async function findPage({ payload, user }: Pick<LookupArgs, 'payload' | 'user'>,
  * English" can still take it down in one language. Its address in another language, where the
  * language switch leads, then redirects to this language's home page instead of a 404. Its own
  * English address is a 404, and so is the home page itself.
+ * If this language's home page is unpublished too, the redirect lands on its 404: the home page
+ * never redirects to itself (an intentional loop guard).
  */
 export async function lookupPage(args: LookupArgs): Promise<PageLookup> {
   const { locale, slug } = args
