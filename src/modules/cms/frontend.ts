@@ -1,10 +1,12 @@
 import config from '@payload-config'
 import { getPayload } from 'payload'
 
+import { getLightConfig } from '@/config'
 import type { Locale } from '@/core/i18n/locales'
 import type { NavItem, SitemapEntry } from '@/core/types'
 
 import { readNav } from './globals/nav'
+import { pageSitemapEntries } from './pages/sitemap'
 
 // What the CMS module gives the public site. The locale layout, the home page and
 // src/app/sitemap.ts import these only when the CMS is on. Stubs until the stories below fill them.
@@ -27,5 +29,7 @@ export async function getFooterText(locale: Locale): Promise<string | null> {
 
 /** Sitemap entries for the published pages (S12). */
 export async function getSitemapEntries(): Promise<SitemapEntry[]> {
-  return []
+  const payload = await getPayload({ config })
+  const { site, locales } = getLightConfig()
+  return pageSitemapEntries(payload, site.url, locales.default)
 }
