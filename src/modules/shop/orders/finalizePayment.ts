@@ -53,12 +53,14 @@ export async function finalizePayment(payload: Payload, paymentIntentId: string)
   if (settled && !order) throw new OrderDeletedError(`PaymentIntent ${paymentIntentId} was settled, and its order was deleted since.`)
 
   if (!order) {
-    if (transaction.status === 'expired') {
-      // The reconcile job expired it as unpaid, but Stripe says it was paid after all (a checkout
-      // left open for a day): back to pending, once, so the plugin can claim it.
+    if (transaction.status === 'expired' || transaction.status === 'failed') {
+      // The reconcile job closed it, but Stripe says it was paid after all: `expired` when a
+      // checkout was left open for a day, `failed` when the job ran with a Stripe key that doesn't
+      // know the payment (a night with the wrong key). Only the reconcile job sets these, and this
+      // runs only for a payment Stripe calls paid. Back to pending, once, so the plugin can claim it.
       await payload.db.updateOne({
         collection: 'transactions',
-        where: { and: [{ id: { equals: transaction.id } }, { status: { equals: 'expired' } }] },
+        where: { and: [{ id: { equals: transaction.id } }, { status: { in: ['expired', 'failed'] } }] },
         data: { status: 'pending' },
         options: { atomic: true },
       })

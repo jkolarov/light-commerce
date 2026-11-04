@@ -235,6 +235,16 @@ describeWithShop('order emails: sent once per order, after the settlement', () =
       expect(sentFor(order)).toHaveLength(2)
     })
 
+    it('gives up on an order more than three days old: a late email would surprise more than help', async () => {
+      const missed = await import('@/modules/shop/emails/missed')
+      const { order } = await lostOrder('Lavande')
+      expect(await missed.sendMissedOrderEmails(payload, { now: minutes(3 * 24 * 60 + 1) })).not.toContain(order.id)
+      expect(sentFor(order)).toHaveLength(0)
+      // Within the three days, still sent.
+      expect(await missed.sendMissedOrderEmails(payload, { now: minutes(3 * 24 * 60 - 1) })).toContain(order.id)
+      expect(sentFor(order)).toHaveLength(2)
+    })
+
     it('is the last step of the reconcile job', async () => {
       const reconcile = await import('@/modules/shop/orders/reconcile')
       const { order } = await lostOrder('Coquelicot')

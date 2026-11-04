@@ -1,8 +1,9 @@
 import type { Endpoint, PayloadRequest } from 'payload'
 import Stripe from 'stripe'
 
-import { finalizePayment, OrderDeletedError, UnknownPaymentError } from '../../orders/finalizePayment'
+import { finalizePayment, OrderDeletedError, PaymentNotSettledError, UnknownPaymentError } from '../../orders/finalizePayment'
 import type { StripeSettings } from './env'
+import { findPaymentTransaction } from './payments'
 
 // Stripe's webhook, `POST /api/payments/stripe/webhooks`: it replaces the built-in adapter's,
 // which answers 200 and drops the event when the request has no `stripe-signature` header (plan,
@@ -11,9 +12,11 @@ import type { StripeSettings } from './env'
 // - no signature, or a bad one: 400, nothing read or written;
 // - `payment_intent.succeeded`: `finalizePayment` creates the order unless it exists (the browser
 //   may never come back), then 200. A payment the shop didn't start (another app on the same
-//   Stripe account), or one whose order the owner deleted since: 200, ignored. Anything else that
-//   goes wrong: 500, so Stripe sends the event
-//   again later (it retries for days), and `finalizePayment` is idempotent;
+//   Stripe account), or one whose order the owner deleted since: 200, ignored. A paid payment the
+//   reconcile job has flagged as impossible to settle here (its cart is gone: an `attentionNote` on
+//   the transaction, for the owner to settle by hand): 200 too, as retrying can't help. Anything
+//   else that goes wrong: 500, so Stripe sends the event again later (it retries for days), and
+//   `finalizePayment` is idempotent;
 // - every other event: 200, ignored.
 
 const answer = (status: number, body: Record<string, unknown>) => Response.json(body, { status })
@@ -48,6 +51,10 @@ export function webhookEndpoint(settings: StripeSettings): Endpoint {
       } catch (error) {
         if (error instanceof UnknownPaymentError || error instanceof OrderDeletedError) {
           payload.logger.info({ msg: `Shop: webhook ${event.id}: ignored (${error.message})` })
+          return answer(200, { received: true, ignored: true })
+        }
+        if (error instanceof PaymentNotSettledError && error.status === 409 && (await findPaymentTransaction(payload, paymentIntentId))?.attentionNote) {
+          payload.logger.warn({ msg: `Shop: webhook ${event.id}: PaymentIntent ${paymentIntentId} is flagged as impossible to settle here; not asking Stripe to retry.` })
           return answer(200, { received: true, ignored: true })
         }
         payload.logger.error({ err: error, msg: `Shop: webhook ${event.id}: could not settle PaymentIntent ${paymentIntentId}; Stripe will send it again.` })

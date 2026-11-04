@@ -172,6 +172,20 @@ describeWithShop('reconciling payments left behind', () => {
     expect((await transaction(late.id)).status).toBe('succeeded')
   })
 
+  it('still makes the order when a payment closed here as failed is paid after all (a night with the wrong Stripe key)', async () => {
+    const late = await started()
+    // With another account's key, Stripe doesn't know the PaymentIntent: the job closes it as failed.
+    const known = stripe.intents.get(late.stripe!.paymentIntentID!)!
+    stripe.intents.delete(late.stripe!.paymentIntentID!)
+    expect(resultFor(await reconcile.reconcilePayments(payload, { now: later(1) }), late.id)).toMatchObject({ action: 'failed', reason: 'unknown to Stripe' })
+    stripe.intents.set(late.stripe!.paymentIntentID!, known)
+    stripe.pay(late.stripe!.paymentIntentID!)
+    const { finalizePayment } = await import('@/modules/shop/orders/finalizePayment')
+    const { order } = await finalizePayment(payload, late.stripe!.paymentIntentID!)
+    expect(await ordersOf(late.id)).toEqual([expect.objectContaining({ id: order.id })])
+    expect((await transaction(late.id)).status).toBe('succeeded')
+  })
+
   it('leaves settled payments alone', async () => {
     const done = await started()
     stripe.pay(done.stripe!.paymentIntentID!)

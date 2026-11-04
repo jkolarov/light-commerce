@@ -51,7 +51,7 @@ describe('email sender and transport', () => {
     expect(logged).not.toContain('Your order')
   })
 
-  it('gives up on a slow mail server after 10 seconds at each step, well inside Docker’s stop grace', () => {
+  it('gives up on a mail server that stops answering after 10 seconds at each step, not nodemailer’s minutes', () => {
     expect(SMTP_TIMEOUT_MS).toBe(10_000)
     expect(smtpTransportOptions({ host: 'mailpit', port: 1025 })).toEqual({
       host: 'mailpit',

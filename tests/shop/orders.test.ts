@@ -348,6 +348,38 @@ describeWithShop('orders from payments', () => {
       expect(await payload.findByID({ collection: 'carts', id: cart.id, overrideAccess: true, disableErrors: true })).not.toBeNull()
     })
 
+    it('also keeps the cart of a payment closed here as expired or failed: Stripe may still be paid for it', async () => {
+      const product = await publish({ title: 'Panier rouvrable', inventory: 5 })
+      for (const status of ['expired', 'failed'] as const) {
+        const { cart, id } = await startedPayment([{ product: product.id, quantity: 1 }])
+        const transaction = (await payments.findPaymentTransaction(payload, id))!
+        await payload.db.updateOne({ collection: 'transactions', id: transaction.id, data: { status } })
+        const res = await handleEndpoints({
+          config: payload.config,
+          path: `/api/carts/${cart.id}`,
+          request: new Request(`http://localhost/api/carts/${cart.id}?secret=${cart.secret}`, { method: 'DELETE' }),
+        })
+        expect(res.status, status).toBe(400)
+        // Paid after all (a tab left open): the order is still made from that cart.
+        stripe.pay(id)
+        expect(await webhook(succeededEvent(id)), status).toBe(200)
+        expect(await ordersOf(id), status).toHaveLength(1)
+      }
+    })
+
+    it('stops Stripe’s retries once a paid payment is flagged as impossible to settle here', async () => {
+      const product = await publish({ title: 'Panier perdu', inventory: 5 })
+      const { cart, id } = await startedPayment([{ product: product.id, quantity: 1 }])
+      stripe.pay(id)
+      // A script deleted its cart (scripts are not stopped): the payment can't become an order.
+      await payload.db.deleteOne({ collection: 'carts', where: { id: { equals: cart.id } } })
+      expect(await webhook(succeededEvent(id))).toBe(500) // retried: the reconcile job hasn't seen it yet
+      const transaction = (await payments.findPaymentTransaction(payload, id))!
+      await payload.db.updateOne({ collection: 'transactions', id: transaction.id, data: { attentionNote: 'Payé chez Stripe, impossible à régler ici.' } })
+      expect(await webhook(succeededEvent(id))).toBe(200)
+      expect(await ordersOf(id)).toHaveLength(0)
+    })
+
     it('lets nobody create an order by hand, and only the owner delete one', async () => {
       await expect(payload.create({ collection: 'orders', data: { amount: 1 } as Order, overrideAccess: false, user: asStaff() })).rejects.toThrow()
       const order = await paidOrder()
