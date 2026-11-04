@@ -36,6 +36,7 @@ Node.js 24 (24.22.1+) and pnpm 12 (`packageManager` in `package.json`). First co
 - `pnpm generate`: regenerate `src/payload-types.ts` and `src/app/(payload)/admin/importMap.js`. Run it after changing collections, fields or admin components, and commit the result.
 - `pnpm generate:check`: fails if those two files are stale. It never changes your tree.
 - `pnpm payload <command>`: the Payload CLI (`pnpm payload --help`).
+- `docker compose -f compose.dev.yml up -d mailpit`: Mailpit (SMTP `127.0.0.1:1025`, web UI `127.0.0.1:8025`; override with `MAILPIT_SMTP_PORT`, `MAILPIT_UI_PORT`; this machine's booking-platform Mailpit already holds 1026 and 8026). `--profile app` also runs the production image; see the README, "Docker". `GET /healthz` is the health check.
 
 CI (`.github/workflows/ci.yml`) runs `typecheck`, `lint`, `test`, `build` and `generate:check` on every PR and on `main`.
 
