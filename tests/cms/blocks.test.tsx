@@ -74,7 +74,8 @@ describeWithCms('CMS blocks on pages', () => {
     const layout = pages.fields.find((f) => 'name' in f && f.name === 'layout')
     expect(layout?.type).toBe('blocks')
     const slugs = layout?.type === 'blocks' ? layout.blocks.map((b) => b.slug) : []
-    expect(slugs).toEqual(['hero', 'richText', 'imageText', 'callToAction'])
+    // The CMS blocks, in this order. Other modules may add theirs after (the shop's productGrid).
+    expect(slugs.slice(0, 4)).toEqual(['hero', 'richText', 'imageText', 'callToAction'])
   })
 
   it('round-trips a page with every block, in French and in English', async () => {
