@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 # Production image: Next.js standalone output on Node 24 (slim, glibc), run as the non-root `node` user.
-# Targets: `runner` (the last stage, the default) and `schema` (one-off schema push, see README "Docker").
+# Targets: `runner` (the last stage, the default) and `schema` (the Payload CLI for one-off jobs on
+# the data volume: migrations, the demo's seed and nightly reset; see README "Docker").
 
 ARG NODE_VERSION=24.22.2
 
@@ -26,15 +27,17 @@ RUN PAYLOAD_SECRET=build-time-placeholder DATABASE_URI=file:/tmp/build.db \
     STRIPE_SECRET_KEY=build-placeholder STRIPE_WEBHOOKS_SIGNING_SECRET=build-placeholder \
     pnpm build
 
-# ---- schema: one-off schema push for a fresh database (until S26's baseline migration) ----
-# Has the full node_modules and the Payload CLI. NODE_ENV stays unset on purpose: Payload only
-# pushes the schema outside production. Run it with the data volume mounted:
+# ---- schema: the Payload CLI and the full node_modules, for one-off jobs on the data volume ----
+# The demo's seed and nightly reset run in it (`payload run src/seed/...`, compose files). With
+# NODE_ENV=production, as in the runner, Payload applies pending migrations (src/migrations) and
+# never pushes the schema: a database that was pushed once can't be migrated afterwards. The
+# default command applies the migrations, which the server also does on start.
 #   docker compose run --rm schema
 FROM builder AS schema
 RUN mkdir -p /app/data/media && chown -R node:node /app/data /app/src
 USER node
-ENV DATABASE_URI=file:/app/data/light.db MEDIA_DIR=/app/data/media
-CMD ["./node_modules/.bin/payload", "run", "scripts/docker/push-schema.ts"]
+ENV NODE_ENV=production DATABASE_URI=file:/app/data/light.db MEDIA_DIR=/app/data/media
+CMD ["./node_modules/.bin/payload", "migrate"]
 
 # ---- runner: only what the standalone server needs ----
 FROM node:${NODE_VERSION}-slim AS runner
@@ -57,5 +60,6 @@ EXPOSE 3000
 # Node's own fetch: the slim image has no curl. /healthz never touches the database.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
-# Pending migrations run when Payload initialises (prodMigrations), then the server answers.
+# Pending migrations (src/migrations) run when Payload initialises (prodMigrations), so a new
+# volume gets its tables on the first start. Then the server answers.
 CMD ["node", "server.js"]
