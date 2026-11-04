@@ -14,11 +14,23 @@
     "menu": "Menu",
     "shop": "Boutique",
     "cart": "Panier",
-    "skipToContent": "Aller au contenu"
+    "skipToContent": "Aller au contenu",
+    "mainLabel": "Menu principal",
+    "footerLabel": "Pied de page"
   },
   "footer": {
     "contact": "Contact",
-    "allRightsReserved": "Tous droits réservés."
+    "allRightsReserved": "Tous droits réservés.",
+    "copyright": "© {year} {siteName}"
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "text": "Aucune page ne se trouve à cette adresse. Elle a peut-être changé de nom, ou le lien contient une faute de frappe."
+  },
+  "error": {
+    "title": "Cette page n’a pas pu s’afficher",
+    "text": "Le site a rencontré un problème en préparant cette page. Réessayez dans un instant ; si le problème continue, repartez de l’accueil.",
+    "retry": "Réessayer"
   },
   "shop": {
     "title": "Boutique",
