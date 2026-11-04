@@ -1,4 +1,4 @@
-import { asMedia, imageSources } from './media'
+import { asMedia, imageAttributes } from '../media'
 
 type Props = {
   /** The upload field's value: the media document at depth 1, or an id when it was not loaded. */
@@ -17,18 +17,11 @@ type Props = {
 export function MediaImage({ media, sizes, className, priority = false }: Props) {
   const doc = asMedia(media)
   if (!doc) return null
-  const sources = imageSources(doc)
-  const largest = sources.at(-1)
   return (
     // Plain <img>: the media collection already makes the sizes, next/image would make them again.
-    // eslint-disable-next-line @next/next/no-img-element
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text -- alt comes from the media document
     <img
-      src={largest?.url ?? doc.url ?? undefined}
-      srcSet={sources.length > 1 ? sources.map((s) => `${s.url} ${s.width}w`).join(', ') : undefined}
-      sizes={sources.length > 1 ? sizes : undefined}
-      width={largest?.width ?? doc.width ?? undefined}
-      height={largest?.height ?? doc.height ?? undefined}
-      alt={doc.alt ?? ''}
+      {...imageAttributes(doc, sizes)}
       loading={priority ? 'eager' : 'lazy'}
       fetchPriority={priority ? 'high' : undefined}
       decoding={priority ? undefined : 'async'}

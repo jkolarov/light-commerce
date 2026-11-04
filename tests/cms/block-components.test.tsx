@@ -7,8 +7,8 @@ import { cmsBlockComponents } from '@/modules/cms/blocks/components'
 import { Hero } from '@/modules/cms/blocks/Hero/Component'
 import { ImageText } from '@/modules/cms/blocks/ImageText/Component'
 import { RichText } from '@/modules/cms/blocks/RichText/Component'
-import { imageSources } from '@/modules/cms/blocks/shared/media'
 import type { CallToActionBlock, HeroBlock, ImageTextBlock, RichTextBlock } from '@/payload-types'
+import { imageSources } from '@/theme/media'
 
 import { describeWithCms } from '../support/modules'
 import {

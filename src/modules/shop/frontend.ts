@@ -1,6 +1,11 @@
+import config from '@payload-config'
 import type { ComponentType } from 'react'
+import { getPayload } from 'payload'
 
+import { getLightConfig } from '@/config'
 import type { SitemapEntry } from '@/core/types'
+
+import { productSitemapEntries } from './products/sitemap'
 
 // What the shop module gives the public site. The locale layout, the home page, CMS pages and
 // src/app/sitemap.ts import these only when the shop is on. Stubs until the stories below fill them.
@@ -15,7 +20,8 @@ export { ProductList } from './components/ProductList'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- each block component has its own props
 export const blockComponents: Record<string, ComponentType<any>> = {}
 
-/** Sitemap entries for the products (S15). */
+/** Sitemap entries for the shop page and the published products, in every language (S15). */
 export async function getSitemapEntries(): Promise<SitemapEntry[]> {
-  return []
+  const { site, locales } = getLightConfig()
+  return productSitemapEntries(await getPayload({ config }), site.url, locales.available)
 }

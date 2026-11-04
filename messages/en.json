@@ -36,9 +36,17 @@
     "title": "Shop",
     "price": "Price",
     "addToCart": "Add to cart",
-    "outOfStock": "Out of stock",
+    "outOfStock": "Sold out",
     "inStock": "In stock",
-    "noProducts": "No products yet."
+    "lowStock": "{count, plural, one {Only one left} other {Only # left}}",
+    "soldOutNotice": "None left for now.",
+    "noProducts": "No products yet.",
+    "taxIncluded": "incl. {rate}% VAT",
+    "pricesIncludeTax": "Prices include {rate}% VAT.",
+    "breadcrumb": "Breadcrumb",
+    "facts": "Product details",
+    "photos": "Product photos",
+    "showPhoto": "Show photo {index} of {count}"
   },
   "cart": {
     "title": "Your cart",
