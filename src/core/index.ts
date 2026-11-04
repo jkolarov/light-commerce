@@ -8,6 +8,7 @@ import { adminConfig } from './admin'
 import { MEDIA_MAX_BYTES, Media, mediaSharp } from './collections/Media'
 import { Users } from './collections/Users'
 import { database } from './db'
+import { emailAdapter } from './email'
 import { generatedTypesConfig } from './generatedTypes'
 import { adminI18n } from './i18n/admin'
 import { localizationConfig } from './i18n/localization'
@@ -20,6 +21,7 @@ export function coreConfig(opts: { config: LightConfig }) {
     collections: [Users, Media],
     db: database(),
     editor: lexicalEditor(),
+    email: emailAdapter(opts),
     i18n: adminI18n,
     localization: localizationConfig(opts),
     secret: process.env.PAYLOAD_SECRET || '',

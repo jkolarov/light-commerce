@@ -169,6 +169,9 @@ importers:
       '@payloadcms/db-sqlite':
         specifier: 4.0.0-beta.6
         version: 4.0.0-beta.6(payload@4.0.0-beta.6(graphql@16.14.2)(supports-color@7.2.0)(typescript@6.0.3))(supports-color@7.2.0)
+      '@payloadcms/email-nodemailer':
+        specifier: 4.0.0-beta.6
+        version: 4.0.0-beta.6(payload@4.0.0-beta.6(graphql@16.14.2)(supports-color@7.2.0)(typescript@6.0.3))
       '@payloadcms/next':
         specifier: 4.0.0-beta.6
         version: 4.0.0-beta.6(@types/react@19.3.0)(graphql@16.14.2)(monaco-editor@0.57.0)(next@16.4.2(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@24.12.3)(babel-plugin-macros@3.1.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sass@1.77.4))(payload@4.0.0-beta.6(graphql@16.14.2)(supports-color@7.2.0)(typescript@6.0.3))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@7.2.0)(typescript@6.0.3)
@@ -1604,6 +1607,12 @@ packages:
 
   '@payloadcms/drizzle@4.0.0-beta.6':
     resolution: {integrity: sha512-PDlC78XXbSSQZKRQYs4QHjRjKzv4jLbqWthroVN3d/gz3Tphyyc9j8elmB7kK3IGQWeK70oSapTc3J7mRBIIPQ==}
+    peerDependencies:
+      payload: 4.0.0-beta.6
+
+  '@payloadcms/email-nodemailer@4.0.0-beta.6':
+    resolution: {integrity: sha512-VYAEpHsQLN0Ng+dj3/nLQgHtlVeTrXLL6o2+nxLMf/MK89QI4+CUlECi3J0SVWe2QExiCLvSmG/3wJBl/moqmQ==}
+    engines: {node: '>=24.22.1'}
     peerDependencies:
       payload: 4.0.0-beta.6
 
@@ -3697,6 +3706,10 @@ packages:
     resolution: {integrity: sha512-6li2QanLsAXpIH2R6j77MzRyvOyrvdTqlKtO4CgBdHGNvN99ZZfyxszHc5o5+IZBWD5u6Hzwg83JoGXmqZNG9Q==}
     engines: {node: '>=18'}
 
+  nodemailer@10.3.1:
+    resolution: {integrity: sha512-uF0AFsJC07Y1vdW7p580DKAnh7rAO+4UPSSB3mDCPNDufoiaOebV6JmrzpxB14OjEEEiBsNdYoM2Y+fN8M7BBA==}
+    engines: {node: '>=20.0.0'}
+
   normalize-path@3.0.0:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
     engines: {node: '>=0.10.0'}
@@ -5767,6 +5780,11 @@ snapshots:
       - prisma
       - sql.js
       - sqlite3
+
+  '@payloadcms/email-nodemailer@4.0.0-beta.6(payload@4.0.0-beta.6(graphql@16.14.2)(supports-color@7.2.0)(typescript@6.0.3))':
+    dependencies:
+      nodemailer: 10.3.1
+      payload: 4.0.0-beta.6(graphql@16.14.2)(supports-color@7.2.0)(typescript@6.0.3)
 
   '@payloadcms/graphql@4.0.0-beta.6(graphql@16.14.2)(payload@4.0.0-beta.6(graphql@16.14.2)(supports-color@7.2.0)(typescript@6.0.3))(typescript@6.0.3)':
     dependencies:
@@ -8092,6 +8110,8 @@ snapshots:
       formdata-polyfill: 4.0.10
 
   node-releases@2.0.63: {}
+
+  nodemailer@10.3.1: {}
 
   normalize-path@3.0.0: {}
 

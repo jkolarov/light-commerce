@@ -92,7 +92,7 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Smoke test (the container starts and answers /healthz)
         run: |
-          docker run -d --name smoke -p 3000:3000 -e PAYLOAD_SECRET=ci-placeholder-payload-secret light-commerce:ci
+          docker run -d --name smoke -p 3000:3000 -e PAYLOAD_SECRET=ci-placeholder-payload-secret -e SMTP_HOST=localhost -e SMTP_PORT=1025 light-commerce:ci
           for i in $(seq 1 30); do
             curl -fs http://127.0.0.1:3000/healthz && exit 0
             sleep 2
