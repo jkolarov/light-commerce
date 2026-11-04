@@ -4,16 +4,15 @@ import type { Metadata } from 'next'
  * Title rule for every public page: the site name appears once.
  *
  * The locale layout's title template adds " – <site name>" to a plain string title. An editor (or
- * the seeded content) may already have ended the title with the site name ("Nos tisanes – Les
- * Claies"). Such a title is used as-is through `title.absolute`, so the template does not double
- * it. Any other title is returned as a plain string and gets the template.
+ * the seeded content) may already have the site name in the title ("Nos tisanes – Les Claies",
+ * "Les Claies – plantes à tisane", or just "Les Claies"). Such a title (the name anywhere in it,
+ * any case) is used as-is through `title.absolute`, so the template does not double it. Any other title is returned as a plain string and gets the template.
  */
 export function pageTitle(title: string | null | undefined, siteName: string): Metadata['title'] {
   const text = title?.trim()
   if (!text) return undefined
   const name = siteName.trim().toLowerCase()
-  const endsWithName = text.toLowerCase().endsWith(name) && text.length > name.length
-  return endsWithName ? { absolute: text } : text
+  return name && text.toLowerCase().includes(name) ? { absolute: text } : text
 }
 
 /** The plain text of a title built by `pageTitle`, for places that need a string (Open Graph). */

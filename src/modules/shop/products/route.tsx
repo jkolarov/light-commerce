@@ -71,5 +71,6 @@ export async function productMetadata(locale: Locale, slug: string): Promise<Met
 export async function shopMetadata(locale: Locale): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'shop' })
   const links = alternates(locale, shopPath)
-  return { title: t('title'), alternates: links, openGraph: { type: 'website', title: t('title'), url: links.canonical, locale } }
+  const title = pageTitle(t('title'), getLightConfig().site.name)
+  return { title, alternates: links, openGraph: { type: 'website', title: titleText(title), url: links.canonical, locale } }
 }
