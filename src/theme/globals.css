@@ -1,0 +1,45 @@
+@import 'tailwindcss';
+
+/*
+ * Theme variables of the public site. These are the defaults; S22 sets them on <html> from
+ * light.config.ts (theme.colors, theme.fonts). Blocks and shop components use only these,
+ * through the Tailwind names below (bg-primary, text-primary-contrast, bg-surface, text-muted,
+ * font-heading, ...) or var(--lc-*), so they look right before and after S22.
+ */
+:root {
+  --lc-color-primary: #1f3a5f;
+  --lc-color-primary-contrast: #ffffff;
+  --lc-color-background: #ffffff;
+  --lc-color-surface: #f4f4f2;
+  --lc-color-text: #1c1c1a;
+  --lc-color-muted: #5f5f5a;
+  --lc-font-heading: system-ui, sans-serif;
+  --lc-font-body: system-ui, sans-serif;
+}
+
+/* Tailwind 4 theme mapped to the variables. `inline` keeps the var() reference in utilities. */
+@theme inline {
+  --color-primary: var(--lc-color-primary);
+  --color-primary-contrast: var(--lc-color-primary-contrast);
+  --color-background: var(--lc-color-background);
+  --color-surface: var(--lc-color-surface);
+  --color-text: var(--lc-color-text);
+  --color-muted: var(--lc-color-muted);
+  --font-heading: var(--lc-font-heading);
+  --font-body: var(--lc-font-body);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text);
+    font-family: var(--font-body);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+  }
+}
