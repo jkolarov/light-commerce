@@ -24,6 +24,21 @@ One Next.js app with **Payload CMS 4** inside it, SQLite by default, and Payload
 
 Payload and `@payloadcms/plugin-ecommerce` are pinned to exact versions. Don't upgrade them inside another ticket: each upgrade is its own ticket.
 
+## Commands
+
+Node.js 24 (24.22.1+) and pnpm 12 (`packageManager` in `package.json`). First copy `.env.example` to `.env` and set `PAYLOAD_SECRET` (`openssl rand -hex 32`).
+
+- `pnpm install`: install. A dependency with a build script must be allowed in `pnpm-workspace.yaml` (`allowBuilds`); pnpm 12 ignores the `"pnpm"` field in `package.json`.
+- `pnpm dev`: dev server on port 3000 (`pnpm dev -p <port>` for another). It pushes the schema to the SQLite file in `DATABASE_URI` (default `file:./data/light.db`) and regenerates `src/payload-types.ts`.
+- `pnpm build`: production build (`payload build`: import map, types, then `next build`) into `.next/standalone`. No Payload queries at build time: the build runs against an empty database.
+- `pnpm start`: serves the build (Next warns that standalone output is meant for `node .next/standalone/server.js`, which is what Docker runs).
+- `pnpm typecheck`, `pnpm lint`, `pnpm test`: TypeScript, ESLint, vitest. Unit tests are `*.test.ts(x)` in `tests/` or next to the code.
+- `pnpm generate`: regenerate `src/payload-types.ts` and `src/app/(payload)/admin/importMap.js`. Run it after changing collections, fields or admin components, and commit the result.
+- `pnpm generate:check`: fails if those two files are stale. It never changes your tree.
+- `pnpm payload <command>`: the Payload CLI (`pnpm payload --help`).
+
+CI (`.github/workflows/ci.yml`) runs `typecheck`, `lint`, `test`, `build` and `generate:check` on every PR and on `main`.
+
 ## Rules
 
 - **Config in code, not in the admin.** Anything that changes rarely (site, locales, modules, shipping, tax display, email wording, theme) lives in `light.config.ts`, validated by a zod schema. Content types live as Payload collection files inside their module. The admin only covers weekly tasks: pages, menus, media, products, stock, orders. Before adding a settings screen, ask whether it should be config instead.
