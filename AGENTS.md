@@ -34,7 +34,7 @@ Node.js 24 (24.22.1+) and pnpm 12 (`packageManager` in `package.json`). First co
 - `pnpm start`: serves the build (Next warns that standalone output is meant for `node .next/standalone/server.js`, which is what Docker runs).
 - `pnpm typecheck`, `pnpm lint`, `pnpm test`: TypeScript, ESLint, vitest. Unit tests are `*.test.ts(x)` in `tests/` or next to the code. A test that needs Payload boots it with `startPayload()` from `tests/support/payload.ts` (fresh temp SQLite file). ESLint fails on imports between `cms` and `shop`, and from core into a module.
 - `pnpm generate`: regenerate `src/payload-types.ts` and `src/app/(payload)/admin/importMap.js`. Run it after changing collections, fields or admin components, and commit the result.
-- `pnpm generate:check`: fails if those two files are stale. It never changes your tree.
+- `pnpm generate:check`: fails if those two files are stale. It always compares with both modules on, and never changes your tree.
 - `pnpm payload <command>`: the Payload CLI (`pnpm payload --help`).
 - `docker compose -f compose.dev.yml up -d mailpit`: Mailpit (SMTP `127.0.0.1:1025`, web UI `127.0.0.1:8025`; override with `MAILPIT_SMTP_PORT`, `MAILPIT_UI_PORT`; this machine's booking-platform Mailpit already holds 1026 and 8026). `--profile app` also runs the production image; see the README, "Docker". `GET /healthz` is the health check.
 
@@ -45,9 +45,11 @@ CI (`.github/workflows/ci.yml`) runs on every PR and on `main`:
 - `typecheck`, `lint`, `test` and `build` in three setups: both modules, CMS only, shop only. Each module must work with the other one off.
 - `generate:check`, with both modules on.
 
+**Tests run in every setup.** Core tests must pass in all three. A module's tests go inside `describeWithCms(...)` or `describeWithShop(...)` from `tests/support/modules.ts`, which skips them when their module is off. A test that needs one fixed setup boots it with `startPayload({ LIGHT_CI_MODULES: 'cms' })` (see `tests/setups/`).
+
 How CI switches modules, and what that means for generated files:
 
-- `LIGHT_CI_MODULES` replaces `modules` in `light.config.ts` without editing it: `cms,shop`, `cms` or `shop`. The result is checked like the file itself (the shop still needs its `shop` section). Run a CI setup locally with, for example, `LIGHT_CI_MODULES=cms pnpm build`. A test boots a setup with `startPayload({ LIGHT_CI_MODULES: 'cms' })` (see `tests/setups/`). It is for CI and tests only: a site switches modules in `light.config.ts`, and the variable is not in `.env.example`.
+- `LIGHT_CI_MODULES` replaces `modules` in `light.config.ts` without editing it: `cms,shop`, `cms` or `shop`. The result is checked like the file itself (the shop still needs its `shop` section). Run a CI setup locally with, for example, `LIGHT_CI_MODULES=cms pnpm build`. It is for CI and tests only: a site switches modules in `light.config.ts`, and the variable is not in `.env.example`. A production server (`NODE_ENV=production` without `CI` set) refuses to start when it is set, and a dev server logs a warning. To serve a CI setup locally, use `CI=1 LIGHT_CI_MODULES=cms pnpm start`.
 - The committed `src/payload-types.ts` describes both modules, because every module's code is type-checked whichever modules are on. With a module off, Payload (`dev`, `build`, `generate`) writes its types to a scratch file in the OS temp dir instead (`src/core/generatedTypes.ts`). So run `pnpm generate` with both modules on (`LIGHT_CI_MODULES=cms,shop pnpm generate` if `light.config.ts` switches one off).
 - The import map is still rewritten for the active setup, without the components of a module that is off. Don't commit it from such a setup.
 
