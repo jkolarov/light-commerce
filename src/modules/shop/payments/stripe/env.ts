@@ -1,6 +1,7 @@
-// The Stripe settings, from the environment (test-mode keys for the demo). Pure: takes the
-// environment as an argument. Read at runtime, never inlined at build time (the publishable key
-// reaches the page as a prop), so an image built once runs with any keys.
+// The Stripe settings, from the environment (test-mode keys for the demo). Read on the server at
+// runtime; the publishable key reaches the page as a prop. That key may also come from the build:
+// `NEXT_PUBLIC_*` values are build args of the Docker image (README, "Docker"), and Next writes
+// them into the server code at build time.
 
 type Env = Record<string, string | undefined>
 
@@ -22,9 +23,17 @@ const read = (env: Env, name: string) => env[name]?.trim() ?? ''
 export function readStripeSettings(env: Env = process.env): StripeSettings {
   return {
     secretKey: read(env, 'STRIPE_SECRET_KEY'),
-    publishableKey: read(env, 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'),
+    // The runtime value, else the build's (this literal is the one Next replaces at build time).
+    publishableKey: read(env, 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY') || (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '').trim(),
     webhookSecret: read(env, 'STRIPE_WEBHOOKS_SIGNING_SECRET'),
   }
+}
+
+/** The warning when the card form can't load (no publishable key), or null. Not fatal: payments still settle. */
+export function missingPublishableKeyWarning(env: Env = process.env): string | null {
+  return readStripeSettings(env).publishableKey
+    ? null
+    : 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set: the checkout cannot show the card form. Set it in .env, or as a build arg of the Docker image.'
 }
 
 /** The message to show when a required variable is missing, or null if all are set. */

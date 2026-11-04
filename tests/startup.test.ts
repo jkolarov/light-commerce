@@ -9,6 +9,7 @@ const variables = ['NEXT_RUNTIME', 'NODE_ENV', 'CI', 'LIGHT_CI_MODULES'] as cons
 // With the shop on, a server needs its Stripe keys (src/modules/shop/payments/stripe/startup.ts).
 // Placeholders: these tests never call Stripe.
 const stripeKeys = { STRIPE_SECRET_KEY: 'test-placeholder-secret', STRIPE_WEBHOOKS_SIGNING_SECRET: 'test-placeholder-webhook' }
+const publishableKey = { NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'test-placeholder-publishable' }
 
 describe('server startup', () => {
   const previous = Object.fromEntries(variables.map((key) => [key, process.env[key]]))
@@ -23,7 +24,7 @@ describe('server startup', () => {
     exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never)
     logError = vi.spyOn(console, 'error').mockImplementation(() => {})
     warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    for (const [key, value] of Object.entries(stripeKeys)) vi.stubEnv(key, value)
+    for (const [key, value] of Object.entries({ ...stripeKeys, ...publishableKey })) vi.stubEnv(key, value)
   })
 
   afterEach(() => {
@@ -87,6 +88,14 @@ describe('server startup', () => {
     await register()
     expect(logError).toHaveBeenCalledWith(expect.stringContaining(`${key} is not set`))
     expect(exit).toHaveBeenCalledWith(1)
+  })
+
+  it('warns, without stopping, when the card form has no publishable key', async () => {
+    process.env.LIGHT_CI_MODULES = 'shop'
+    vi.stubEnv('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', '')
+    await register()
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set'))
+    expect(exit).not.toHaveBeenCalled()
   })
 
   it('needs no Stripe keys when the shop is off', async () => {

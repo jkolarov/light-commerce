@@ -126,7 +126,7 @@ export function CheckoutForm({ locale, total, currency, shipping, countries, pub
         window.location.assign(`${returnPath}?payment_intent=${encodeURIComponent(outcome.paymentIntentId)}`)
         return
       }
-      setPaymentError(outcome.message ?? t('paymentFailed'))
+      setPaymentError(outcome.message ?? t('notPaid'))
     } catch {
       setPaymentError(t('failed'))
     } finally {
@@ -225,9 +225,15 @@ export function CheckoutForm({ locale, total, currency, shipping, countries, pub
         {/* Stripe draws its card form in here, in its own iframe. */}
         <div ref={mountRef} />
 
-        <p role="alert" className="mt-5 text-[var(--lc-checkout-danger)] empty:hidden">
-          {paymentError}
-        </p>
+        {/* Stripe also shows a card's problem at the card field; this one is by the button, and read out. */}
+        <div role="alert" className="mt-5 empty:hidden">
+          {paymentError && (
+            <>
+              <p className="text-[var(--lc-checkout-danger)]">{paymentError}</p>
+              <p className="mt-0.5 text-[0.9375rem] text-text">{t('notChargedHint')}</p>
+            </>
+          )}
+        </div>
 
         <Button
           type="submit"
